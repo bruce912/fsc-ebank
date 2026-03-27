@@ -19,9 +19,10 @@ body{background:var(--bg);font-family:'Segoe UI',system-ui,sans-serif;font-size:
 .page{display:none}.page.active{display:block}
 .card{border:none;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
 .card-header{background:#fff;border-bottom:1px solid #e2e8f0;border-radius:12px 12px 0 0!important;padding:14px 18px;font-weight:600}
-.stat-card{background:#fff;border-radius:12px;padding:18px;box-shadow:0 1px 4px rgba(0,0,0,.08);transition:.2s}
+.stat-card{background:#fff;border-radius:12px;padding:14px 16px 12px;box-shadow:0 1px 4px rgba(0,0,0,.08);transition:.2s}
 .stat-card:hover{box-shadow:0 4px 12px rgba(0,0,0,.12)}
-.stat-num{font-size:24px;font-weight:700;color:#1e293b}
+.stat-num{font-size:20px;font-weight:700;color:#1e293b}
+.gauge-wrap{display:flex;justify-content:center;margin:4px 0 0}
 .stat-label{color:#64748b;font-size:12px}
 .table th{background:#f8fafc;font-weight:600;font-size:13px;white-space:nowrap}
 .table td{white-space:nowrap;font-size:13px}
@@ -118,37 +119,87 @@ select.form-select,input.form-control{font-size:13px;border-radius:7px;border-co
   <div class="topbar">
     <div class="page-title mb-0"><i class="bi bi-bar-chart-steps text-primary"></i>月份比較</div>
   </div>
-  <div class="filter-bar">
-    <div><label>資料表</label><select id="cmp-table" class="form-select" style="width:200px"></select></div>
-    <div><label>機構</label><select id="cmp-org" class="form-select" style="width:150px"><option value="">全部合計</option></select></div>
-    <div><label>比較月份 A</label><select id="cmp-m1" class="form-select" style="width:120px"></select></div>
-    <div><label>比較月份 B</label><select id="cmp-m2" class="form-select" style="width:120px"></select></div>
-    <button class="btn btn-primary" onclick="compareLoad()"><i class="bi bi-arrow-left-right me-1"></i>比較</button>
+
+  <!-- 篩選條件 -->
+  <div class="card mb-3">
+    <div class="card-body py-3">
+      <div class="d-flex flex-wrap gap-3 align-items-end">
+        <div>
+          <label class="form-label mb-1 small fw-semibold">資料表</label>
+          <select id="cmp-table" class="form-select form-select-sm" style="width:230px"></select>
+        </div>
+        <div>
+          <label class="form-label mb-1 small fw-semibold">機構</label>
+          <select id="cmp-org" class="form-select form-select-sm" style="width:160px"><option value="">全部合計</option></select>
+        </div>
+        <div>
+          <label class="form-label mb-1 small fw-semibold">月份 A</label>
+          <select id="cmp-m1" class="form-select form-select-sm" style="width:120px"></select>
+        </div>
+        <div class="pb-1 text-muted fw-bold" style="font-size:18px">⇄</div>
+        <div>
+          <label class="form-label mb-1 small fw-semibold">月份 B</label>
+          <select id="cmp-m2" class="form-select form-select-sm" style="width:120px"></select>
+        </div>
+        <button class="btn btn-primary btn-sm px-3" onclick="compareLoad()">
+          <i class="bi bi-search me-1"></i>比較
+        </button>
+      </div>
+    </div>
   </div>
-  <div class="row g-3">
-    <div class="col-lg-6">
-      <div class="card">
-        <div class="card-header" id="cmp-card-title">差異明細</div>
-        <div class="table-responsive">
-          <table class="table table-sm mb-0">
-            <thead><tr>
-              <th>欄位</th>
-              <th class="text-end" id="cmp-h1">月份 A</th>
-              <th class="text-end" id="cmp-h2">月份 B</th>
-              <th class="text-end">差異</th>
-              <th class="text-center">變動</th>
-            </tr></thead>
-            <tbody id="cmp-tbody"></tbody>
-          </table>
+
+  <!-- 空狀態 -->
+  <div id="cmp-empty" class="text-center text-muted py-5">
+    <i class="bi bi-bar-chart-steps" style="font-size:52px;opacity:.25"></i>
+    <p class="mt-3 mb-0">請選擇資料表與月份後按「比較」</p>
+  </div>
+
+  <!-- 結果區 -->
+  <div id="cmp-result" style="display:none">
+
+    <!-- 摘要 KPI 列 -->
+    <div class="row g-2 mb-3" id="cmp-summary"></div>
+
+    <!-- 長條圖 -->
+    <div class="card mb-3">
+      <div class="card-header py-2 d-flex align-items-center justify-content-between">
+        <span class="fw-semibold" id="cmp-chart-title">增減幅度（%）</span>
+        <div class="d-flex align-items-center gap-3">
+          <span style="font-size:12px"><span style="display:inline-block;width:12px;height:12px;background:#16a34a;border-radius:2px;margin-right:4px"></span>增加</span>
+          <span style="font-size:12px"><span style="display:inline-block;width:12px;height:12px;background:#dc2626;border-radius:2px;margin-right:4px"></span>減少</span>
+          <span class="text-muted small" id="cmp-ym-label"></span>
         </div>
       </div>
-    </div>
-    <div class="col-lg-6">
-      <div class="chart-box">
-        <strong class="d-block mb-3">對比圖</strong>
-        <canvas id="chart-compare" height="300"></canvas>
+      <div class="card-body p-3">
+        <div id="cmp-chart-wrap"><canvas id="chart-compare"></canvas></div>
       </div>
     </div>
+
+    <!-- 明細表 -->
+    <div class="card">
+      <div class="card-header py-2 d-flex align-items-center justify-content-between">
+        <span class="fw-semibold" id="cmp-card-title">差異明細</span>
+        <div class="d-flex gap-2 align-items-center">
+          <span class="badge rounded-pill" style="background:#6366f1;font-size:11px" id="cmp-badge-a">A</span>
+          <span class="badge rounded-pill" style="background:#ea580c;font-size:11px" id="cmp-badge-b">B</span>
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th style="min-width:120px">欄位</th>
+              <th class="text-end" id="cmp-h1">月份 A</th>
+              <th class="text-end" id="cmp-h2">月份 B</th>
+              <th class="text-end" style="min-width:80px">差異</th>
+              <th style="min-width:140px">變動幅度</th>
+            </tr>
+          </thead>
+          <tbody id="cmp-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -247,7 +298,7 @@ select.form-select,input.form-control{font-size:13px;border-radius:7px;border-co
 </div>
 
 <!-- ═══════ 全業者統計 ═══════ -->
-<div id="page-industry" class="page" style="display:none">
+<div id="page-industry" class="page">
   <div class="topbar">
     <div class="page-title mb-0"><i class="bi bi-bar-chart-line text-primary"></i>全業者統計</div>
   </div>
@@ -361,6 +412,51 @@ function trendBadge(pct){
   return '<span class="badge-neutral small">─</span>';
 }
 
+// 指針式儀表 SVG（量程 ±20%，超過則貼邊）
+function gaugeHtml(pct){
+  const cx=50, cy=50, R=36, NR=30;
+  // pct=null → 顯示空錶盤
+  const SCALE = 20; // ±20% 為滿偏
+  const p = pct==null ? 0 : Math.max(-SCALE, Math.min(SCALE, pct));
+  // angle: -SCALE → 180°, 0 → 90°, +SCALE → 0°
+  const ang = (180 - (p + SCALE) / (SCALE*2) * 180) * Math.PI / 180;
+  const nx = (cx + NR*Math.cos(ang)).toFixed(2);
+  const ny = (cy - NR*Math.sin(ang)).toFixed(2);
+
+  // 彩色弧：從中間(90°)到指針位置
+  const mx = cx.toFixed(2), my = (cy-R).toFixed(2);  // 中間頂點
+  const ex = (cx + R*Math.cos(ang)).toFixed(2);
+  const ey = (cy - R*Math.sin(ang)).toFixed(2);
+  const color = pct==null ? '#94a3b8' : pct>0 ? '#16a34a' : pct<0 ? '#dc2626' : '#94a3b8';
+  // sweep: pct>0 → 順時針(1)，pct<0 → 逆時針(0)
+  const arcSweep = p >= 0 ? 1 : 0;
+  const colorArc = (pct!=null && Math.abs(p)>0.05)
+    ? `<path d="M ${mx} ${my} A ${R} ${R} 0 0 ${arcSweep} ${ex} ${ey}"
+         fill="none" stroke="${color}" stroke-width="5" stroke-linecap="round" opacity="0.85"/>`
+    : '';
+
+  // 刻度標籤
+  const labels = pct==null ? '' :
+    `<text x="11" y="54" font-size="8" fill="#94a3b8" text-anchor="middle">-${SCALE}%</text>
+     <text x="50" y="16" font-size="8" fill="#94a3b8" text-anchor="middle">0</text>
+     <text x="89" y="54" font-size="8" fill="#94a3b8" text-anchor="middle">+${SCALE}%</text>`;
+
+  const pctTxt = pct==null ? '─'
+    : (pct>0?'+':'')+pct.toFixed(1)+'%';
+
+  return `<svg viewBox="0 0 100 62" width="100" height="62">
+    <path d="M 14 50 A 36 36 0 0 1 86 50" fill="none" stroke="#e2e8f0" stroke-width="5" stroke-linecap="round"/>
+    <line x1="50" y1="14" x2="50" y2="20" stroke="#cbd5e1" stroke-width="1.5"/>
+    ${colorArc}
+    <line x1="${cx}" y1="${cy}" x2="${nx}" y2="${ny}"
+      stroke="#1e293b" stroke-width="2.5" stroke-linecap="round"/>
+    <circle cx="${cx}" cy="${cy}" r="4" fill="#1e293b"/>
+    ${labels}
+    <text x="50" y="63" font-size="9.5" font-weight="700" fill="${color}"
+      text-anchor="middle">${pctTxt}</text>
+  </svg>`;
+}
+
 async function loadDashboard(){
   $('db-update-time').textContent = '最後讀取：'+new Date().toLocaleString('zh-TW');
   const groups = await api('/api/dashboard');
@@ -383,12 +479,13 @@ async function loadDashboard(){
           <div class="col-6 col-md-4 col-lg-3 col-xl-2">
             <div class="stat-card h-100" style="cursor:default">
               <div class="stat-label mb-1">${k.label}</div>
-              <div class="stat-num" style="font-size:20px">${fmtBig(k.value)}</div>
-              <div class="d-flex justify-content-between align-items-center mt-2">
+              <div class="stat-num">${fmtBig(k.value)}</div>
+              <div class="d-flex justify-content-between align-items-center mt-1">
                 <small class="text-muted">${k.unit}</small>
                 ${trendBadge(k.pct)}
               </div>
-              ${k.prev!=null?`<div class="text-muted" style="font-size:11px;margin-top:3px">
+              <div class="gauge-wrap">${gaugeHtml(k.pct)}</div>
+              ${k.prev!=null?`<div class="text-muted text-center" style="font-size:10px;margin-top:2px">
                 前月：${fmtBig(k.prev)}</div>`:''}
             </div>
           </div>`).join('')}
@@ -503,72 +600,136 @@ async function compareLoad(){
   const code = $('cmp-table').value;
   const m1v = $('cmp-m1').value.split('_');
   const m2v = $('cmp-m2').value.split('_');
-  const org = $('cmp-org').value;
+  const org  = $('cmp-org').value;
   let url = `/api/table/${code}/compare?yr1=${m1v[0]}&mn1=${m1v[1]}&yr2=${m2v[0]}&mn2=${m2v[1]}`;
   if(org) url+=`&org=${encodeURIComponent(org)}`;
 
   const data = await api(url);
   if(data.error){ toast(data.error,'danger'); return; }
 
-  $('cmp-h1').textContent = data.label1;
-  $('cmp-h2').textContent = data.label2;
-  $('cmp-card-title').textContent = `${data.label1} vs ${data.label2} 差異明細`;
+  $('cmp-empty').style.display  = 'none';
+  $('cmp-result').style.display = '';
 
-  // Filter rows with actual values
-  const rows = data.rows.filter(r=>r.v1!=null||r.v2!=null);
-  $('cmp-tbody').innerHTML = rows.map(r=>{
-    const pctStr = r.pct!=null ? `${r.pct>=0?'+':''}${r.pct}%` : '-';
-    const cls = r.pct>0?'diff-up':r.pct<0?'diff-down':'diff-neutral';
-    const badge = r.pct>0?`<span class="badge-up">▲${Math.abs(r.pct)}%</span>`
-                 :r.pct<0?`<span class="badge-down">▼${Math.abs(r.pct)}%</span>`
-                 :`<span class="badge-neutral">─</span>`;
-    const diffStr = r.diff!=null?(r.diff>=0?'+':'')+fmt(r.diff):'-';
-    return `<tr>
-      <td>${r.col}</td>
-      <td class="text-end">${fmt(r.v1)}</td>
-      <td class="text-end">${fmt(r.v2)}</td>
-      <td class="text-end ${cls}">${diffStr}</td>
-      <td class="text-center">${badge}</td>
-    </tr>`;
-  }).join('') || '<tr><td colspan="5" class="text-center text-muted">無資料</td></tr>';
+  const L1 = data.label1, L2 = data.label2;
+  $('cmp-h1').textContent      = L1;
+  $('cmp-h2').textContent      = L2;
+  $('cmp-card-title').textContent  = `${L1} vs ${L2} 差異明細`;
+  $('cmp-chart-title').textContent = `${L1} vs ${L2} — 各欄增減幅度（%）`;
+  $('cmp-ym-label').textContent    = `A=${L1}  B=${L2}`;
+  $('cmp-badge-a').textContent = `A  ${L1}`;
+  $('cmp-badge-b').textContent = `B  ${L2}`;
 
-  // Radar chart — 正規化後兩月份比較（取差異最大的前8項）
-  const top8 = [...rows].filter(r=>r.v1!=null&&r.v2!=null&&(r.v1>0||r.v2>0))
-    .sort((a,b)=>Math.abs(b.pct||0)-Math.abs(a.pct||0)).slice(0,8);
+  const rows = data.rows.filter(r => r.v1!=null || r.v2!=null);
+
+  // ── 摘要 KPI ───────────────────────────────────────────
+  const withPct  = rows.filter(r => r.pct != null);
+  const upCount  = withPct.filter(r => r.pct > 0).length;
+  const dnCount  = withPct.filter(r => r.pct < 0).length;
+  const maxUp    = withPct.reduce((mx,r)=> r.pct>mx.pct?r:mx, {pct:-Infinity,col:'-'});
+  const maxDn    = withPct.reduce((mn,r)=> r.pct<mn.pct?r:mn, {pct:Infinity, col:'-'});
+  $('cmp-summary').innerHTML = [
+    {icon:'bi-arrow-up-circle-fill', color:'#16a34a', label:'增加欄位數', val:upCount,       unit:'項'},
+    {icon:'bi-arrow-down-circle-fill',color:'#dc2626', label:'減少欄位數', val:dnCount,       unit:'項'},
+    {icon:'bi-graph-up-arrow',       color:'#6366f1', label:'最大增幅',   val:maxUp.pct!=null&&maxUp.pct>-Infinity ? `+${maxUp.pct}%` : '-', unit:maxUp.col},
+    {icon:'bi-graph-down-arrow',     color:'#ea580c', label:'最大減幅',   val:maxDn.pct!=null&&maxDn.pct<Infinity  ? `${maxDn.pct}%`  : '-', unit:maxDn.col},
+  ].map(k=>`
+    <div class="col-6 col-md-3">
+      <div class="card text-center py-2 px-1">
+        <i class="bi ${k.icon} mb-1" style="font-size:22px;color:${k.color}"></i>
+        <div style="font-size:12px;color:#64748b">${k.label}</div>
+        <div style="font-size:20px;font-weight:700;color:${k.color}">${k.val}</div>
+        <div style="font-size:11px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${k.unit}">${k.unit}</div>
+      </div>
+    </div>`).join('');
+
+  // ── 水平長條圖（按絕對增減幅度排序，最多 20 項）──────
+  const chartItems = [...rows]
+    .filter(r => r.pct != null)
+    .sort((a,b) => Math.abs(b.pct) - Math.abs(a.pct))
+    .slice(0, 20);
+
   if(cmpChart) cmpChart.destroy();
-  if(top8.length>0){
-    // 各欄正規化到最大值=100，方便雷達圖呈現
-    const normalize = (val,max) => max>0 ? Math.round(val/max*100) : 0;
-    const maxes = top8.map(r=>Math.max(r.v1||0,r.v2||0));
-    cmpChart = new Chart($('chart-compare'),{
-      type:'radar',
-      data:{
-        labels: top8.map(r=>r.col.length>8?r.col.slice(0,8)+'…':r.col),
-        datasets:[
-          {label:data.label1,
-           data:top8.map((r,i)=>normalize(r.v1,maxes[i])),
-           borderColor:'rgba(99,102,241,0.9)',backgroundColor:'rgba(99,102,241,0.15)',
-           pointBackgroundColor:'rgba(99,102,241,1)',pointRadius:4,borderWidth:2},
-          {label:data.label2,
-           data:top8.map((r,i)=>normalize(r.v2,maxes[i])),
-           borderColor:'rgba(234,88,12,0.9)',backgroundColor:'rgba(234,88,12,0.15)',
-           pointBackgroundColor:'rgba(234,88,12,1)',pointRadius:4,borderWidth:2}
-        ]
+  if(chartItems.length > 0){
+    const barH   = 32;
+    const padTop = 20, padBot = 30;
+    const canvasH = chartItems.length * barH + padTop + padBot;
+    $('cmp-chart-wrap').style.height = canvasH + 'px';
+    $('chart-compare').style.height  = canvasH + 'px';
+
+    const bgColors = chartItems.map(r =>
+      r.pct > 0 ? 'rgba(22,163,74,0.75)' : r.pct < 0 ? 'rgba(220,38,38,0.75)' : 'rgba(148,163,184,0.5)');
+    const bdColors = chartItems.map(r =>
+      r.pct > 0 ? '#16a34a' : r.pct < 0 ? '#dc2626' : '#94a3b8');
+
+    cmpChart = new Chart($('chart-compare'), {
+      type: 'bar',
+      data: {
+        labels: chartItems.map(r => r.col.length > 14 ? r.col.slice(0,13)+'…' : r.col),
+        datasets: [{
+          label: '增減幅度 %',
+          data: chartItems.map(r => r.pct),
+          backgroundColor: bgColors,
+          borderColor: bdColors,
+          borderWidth: 1,
+          borderRadius: 4,
+        }]
       },
-      options:{
-        scales:{r:{min:0,max:100,ticks:{stepSize:20,font:{size:10}},pointLabels:{font:{size:11}}}},
-        plugins:{
-          legend:{position:'top'},
-          tooltip:{callbacks:{label:c=>{
-            const r=top8[c.dataIndex];
-            const v=c.datasetIndex===0?r.v1:r.v2;
-            return `${c.dataset.label}: ${v!=null?v.toLocaleString():'-'}`;
-          }}}
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              title: c => chartItems[c[0].dataIndex].col,
+              label: c => {
+                const r = chartItems[c.dataIndex];
+                const sign = c.parsed.x >= 0 ? '+' : '';
+                return [
+                  ` 增減：${sign}${c.parsed.x.toFixed(2)}%`,
+                  ` ${L1}：${fmt(r.v1)}`,
+                  ` ${L2}：${fmt(r.v2)}`
+                ];
+              }
+            }
+          }
         },
-        maintainAspectRatio:false
+        scales: {
+          x: {
+            grid: { color: '#e2e8f0' },
+            ticks: { callback: v => v+'%', font:{size:11} },
+            title: { display: true, text: 'B 相對 A 的變動 (%)', font:{size:11}, color:'#64748b' }
+          },
+          y: { ticks: { font: { size: 11 } } }
+        }
       }
     });
   }
+
+  // ── 明細表格（內嵌小型進度條）──────────────────────────
+  const MAX_PCT = Math.max(...rows.filter(r=>r.pct!=null).map(r=>Math.abs(r.pct)), 1);
+  $('cmp-tbody').innerHTML = rows.map(r => {
+    const cls     = r.pct>0?'diff-up':r.pct<0?'diff-down':'diff-neutral';
+    const diffStr = r.diff!=null ? (r.diff>=0?'+':'')+fmt(r.diff) : '-';
+    const pctStr  = r.pct!=null  ? (r.pct>=0?'+':'')+r.pct+'%'    : '-';
+    const barW    = r.pct!=null  ? Math.round(Math.abs(r.pct)/MAX_PCT*100) : 0;
+    const barClr  = r.pct>0 ? '#16a34a' : r.pct<0 ? '#dc2626' : '#94a3b8';
+    const barHtml = r.pct!=null ? `
+      <div class="d-flex align-items-center gap-1">
+        <div style="flex:1;height:8px;background:#f1f5f9;border-radius:4px;overflow:hidden">
+          <div style="width:${barW}%;height:100%;background:${barClr};border-radius:4px;transition:.3s"></div>
+        </div>
+        <span class="${cls}" style="font-size:11px;min-width:46px;text-align:right">${pctStr}</span>
+      </div>` : '<span class="text-muted">─</span>';
+    return `<tr>
+      <td class="fw-medium">${r.col}</td>
+      <td class="text-end" style="color:#6366f1">${fmt(r.v1)}</td>
+      <td class="text-end" style="color:#ea580c">${fmt(r.v2)}</td>
+      <td class="text-end ${cls}">${diffStr}</td>
+      <td>${barHtml}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="5" class="text-center text-muted py-3">無資料</td></tr>';
 }
 
 // ══════════════════════════════════════════════════════════
