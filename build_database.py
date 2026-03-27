@@ -200,6 +200,7 @@ def main():
         total_rows += n
 
     insert_wb032w(conn)
+    insert_industry_stats(conn)
 
     # ── 建立 metadata 表 ────────────────────────────────────
     conn.execute('DROP TABLE IF EXISTS "_metadata"')
@@ -255,6 +256,61 @@ def main():
     size_kb = DB_PATH.stat().st_size / 1024
     print(f"\n完成！資料庫: {DB_PATH}")
     print(f"總計 {total_rows} 筆資料，檔案大小: {size_kb:.1f} KB")
+
+def insert_industry_stats(conn):
+    import csv, re
+    csv_path = BASE_DIR / "電子支付機構_全業者統計.csv"
+    if not csv_path.exists():
+        print("  [SKIP] 全業者統計 CSV not found")
+        return
+
+    conn.execute('DROP TABLE IF EXISTS "全業者統計"')
+    conn.execute('''CREATE TABLE "全業者統計" (
+        yr INTEGER, mn INTEGER, ym TEXT,
+        機構名稱 TEXT,
+        使用者人數 REAL,
+        代理收付金額_千元 REAL,
+        移轉匯兌金額_千元 REAL,
+        欄位說明 TEXT,
+        收受儲值金額_千元 REAL,
+        儲值餘額_千元 REAL,
+        代理收付餘額_千元 REAL,
+        各類餘額合計_千元 REAL
+    )''')
+
+    def parse_num(v):
+        v = str(v).strip()
+        if v in ('', 'N/A', '-', 'NA'): return None
+        try: return float(v.replace(',', ''))
+        except: return None
+
+    rows = []
+    with open(csv_path, 'r', encoding='utf-8-sig') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            ym_str = row['年月'].strip()
+            m = re.match(r'(\d+)年(\d+)月', ym_str)
+            if not m: continue
+            yr, mn = int(m.group(1)), int(m.group(2))
+            rows.append((
+                yr, mn, f"{yr}/{mn:02d}",
+                row['電子支付機構名稱'].strip(),
+                parse_num(row['使用者人數']),
+                parse_num(row['當月代理收付實質交易款項金額(千元)']),
+                parse_num(row['當月帳戶間款項移轉或國內外小額匯兌金額(千元)']),
+                row['欄位說明'].strip(),
+                parse_num(row['當月收受儲值款項金額(千元)']),
+                parse_num(row['儲值款項餘額(千元)']),
+                parse_num(row['代理收付款項餘額(千元)']),
+                parse_num(row['各類款項餘額合計(千元)']),
+            ))
+
+    conn.executemany(
+        'INSERT INTO "全業者統計" VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
+        rows
+    )
+    print(f"  全業者統計: {len(rows)} 筆")
+
 
 if __name__ == "__main__":
     main()

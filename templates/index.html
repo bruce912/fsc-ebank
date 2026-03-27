@@ -58,6 +58,7 @@ select.form-select,input.form-control{font-size:13px;border-radius:7px;border-co
     <li class="nav-item"><a class="nav-link" href="#" data-page="compare"><i class="bi bi-bar-chart-steps"></i>月份比較</a></li>
     <li class="nav-item"><a class="nav-link" href="#" data-page="trend"><i class="bi bi-graph-up-arrow"></i>趨勢圖</a></li>
     <li class="nav-item"><a class="nav-link" href="#" data-page="import"><i class="bi bi-cloud-upload"></i>匯入資料</a></li>
+    <li class="nav-item"><a class="nav-link" href="#" data-page="industry"><i class="bi bi-bar-chart-line"></i>全業者統計</a></li>
   </ul>
 </nav>
 
@@ -245,6 +246,59 @@ select.form-select,input.form-control{font-size:13px;border-radius:7px;border-co
   </div>
 </div>
 
+<!-- ═══════ 全業者統計 ═══════ -->
+<div id="page-industry" class="page" style="display:none">
+  <div class="topbar">
+    <div class="page-title mb-0"><i class="bi bi-bar-chart-line text-primary"></i>全業者統計</div>
+  </div>
+  <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
+    <select id="ind-metric" class="form-select form-select-sm" style="width:220px" onchange="indRefreshTrend()">
+      <option value="使用者人數">使用者人數</option>
+      <option value="代理收付金額_千元">代理收付金額（千元）</option>
+      <option value="移轉匯兌金額_千元">移轉匯兌金額（千元）</option>
+      <option value="收受儲值金額_千元">收受儲值金額（千元）</option>
+      <option value="各類餘額合計_千元">各類餘額合計（千元）</option>
+    </select>
+    <select id="ind-inst" class="form-select form-select-sm" style="width:200px" onchange="indRefreshTrend()">
+      <option value="">全部機構</option>
+    </select>
+    <small id="ind-latest-ym" class="text-muted"></small>
+  </div>
+
+  <!-- 趨勢折線圖 -->
+  <div class="card mb-3">
+    <div class="card-body p-2">
+      <canvas id="ind-trend-chart" height="90"></canvas>
+    </div>
+  </div>
+
+  <!-- 最新一期各機構表格 -->
+  <div class="card">
+    <div class="card-header py-2 d-flex align-items-center justify-content-between">
+      <span class="fw-bold small">最新一期各機構明細</span>
+      <span id="ind-table-ym" class="badge bg-secondary"></span>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0 small">
+          <thead class="table-light">
+            <tr>
+              <th>機構名稱</th>
+              <th class="text-end">使用者人數</th>
+              <th class="text-end">代理收付金額<br><small class="text-muted">千元</small></th>
+              <th class="text-end">移轉匯兌金額<br><small class="text-muted">千元</small></th>
+              <th class="text-end">收受儲值金額<br><small class="text-muted">千元</small></th>
+              <th class="text-end">各類餘額合計<br><small class="text-muted">千元</small></th>
+              <th>欄位說明</th>
+            </tr>
+          </thead>
+          <tbody id="ind-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
 </div><!-- /main -->
 
 <!-- Toast -->
@@ -284,6 +338,7 @@ document.querySelectorAll('#sidebar .nav-link').forEach(el=>{
     if(page==='compare') initCompare();
     if(page==='trend') initTrend();
     if(page==='import') loadImportLog();
+    if(page==='industry') { if(!indLoaded) { indLoaded=true; loadIndustryPage(); } }
   });
 });
 
@@ -665,6 +720,75 @@ async function loadImportLog(){
       <td class="text-end text-success">+${l.rows_added}</td>
       <td class="text-end text-muted">${l.rows_skipped}</td>
     </tr>`).join('') || '<tr><td colspan="4" class="text-center text-muted py-3">尚無記錄</td></tr>';
+}
+
+// ═══════ 全業者統計 ═══════
+let indTrendChart = null;
+let indLoaded = false;
+
+async function loadIndustryPage() {
+  // 載入機構清單
+  const insts = await api('/api/industry/institutions');
+  const sel = $('ind-inst');
+  insts.forEach(inst => {
+    const opt = document.createElement('option');
+    opt.value = inst; opt.textContent = inst;
+    sel.appendChild(opt);
+  });
+  // 載入最新期資料
+  await indRefreshLatest();
+  await indRefreshTrend();
+}
+
+async function indRefreshTrend() {
+  const metric = $('ind-metric').value;
+  const inst   = $('ind-inst').value;
+  const data   = await api(`/api/industry/trend?metric=${encodeURIComponent(metric)}&inst=${encodeURIComponent(inst)}`);
+
+  const labels = data.map(d => d.ym);
+  const values = data.map(d => d.value);
+
+  if (indTrendChart) indTrendChart.destroy();
+  indTrendChart = new Chart($('ind-trend-chart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: metric,
+        data: values,
+        borderColor: '#0d6efd',
+        backgroundColor: 'rgba(13,110,253,0.08)',
+        borderWidth: 2,
+        pointRadius: 2,
+        fill: true,
+        tension: 0.3
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { maxTicksLimit: 18, font: { size: 11 } } },
+        y: { ticks: { font: { size: 11 }, callback: v => v >= 1e8 ? (v/1e8).toFixed(1)+'億' : v >= 1e4 ? (v/1e4).toFixed(0)+'萬' : v } }
+      }
+    }
+  });
+}
+
+async function indRefreshLatest() {
+  const result = await api('/api/industry/latest');
+  $('ind-latest-ym').textContent = '最新資料：' + result.ym;
+  $('ind-table-ym').textContent  = result.ym;
+  $('ind-table-body').innerHTML  = result.data.map(r => `
+    <tr>
+      <td>${r.機構名稱}</td>
+      <td class="text-end">${fmtBig(r.使用者人數)}</td>
+      <td class="text-end">${fmtBig(r.代理收付金額_千元)}</td>
+      <td class="text-end">${fmtBig(r.移轉匯兌金額_千元)}</td>
+      <td class="text-end">${fmtBig(r.收受儲值金額_千元)}</td>
+      <td class="text-end">${fmtBig(r.各類餘額合計_千元)}</td>
+      <td><small class="text-muted">${r.欄位說明||''}</small></td>
+    </tr>`).join('');
 }
 
 // ── Init ───────────────────────────────────────────────────

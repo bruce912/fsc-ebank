@@ -650,6 +650,102 @@ def _table_exists(conn, tbl):
     ).fetchone()[0] > 0
 
 
+# ══ 全業者統計 API ═══════════════════════════════════════════
+
+@app.route("/api/industry/periods")
+def api_industry_periods():
+    """回傳所有年月清單"""
+    conn = get_conn()
+    rows = conn.execute('SELECT DISTINCT yr, mn FROM "全業者統計" ORDER BY yr, mn').fetchall()
+    conn.close()
+    return jsonify([{"yr": r[0], "mn": r[1], "ym": f"{r[0]}/{r[1]:02d}"} for r in rows])
+
+@app.route("/api/industry/institutions")
+def api_industry_institutions():
+    """回傳所有機構名稱"""
+    conn = get_conn()
+    rows = conn.execute('SELECT DISTINCT 機構名稱 FROM "全業者統計" ORDER BY 機構名稱').fetchall()
+    conn.close()
+    return jsonify([r[0] for r in rows])
+
+@app.route("/api/industry/trend")
+def api_industry_trend():
+    """
+    回傳歷史趨勢：各年月的加總數字
+    ?metric=使用者人數|代理收付金額_千元|移轉匯兌金額_千元|收受儲值金額_千元|各類餘額合計_千元
+    ?inst=機構名稱 (optional, empty=全部)
+    ?欄位說明=帳戶間款項移轉|國內外小額匯兌 (optional)
+    """
+    metric = request.args.get("metric", "使用者人數")
+    inst   = request.args.get("inst", "")
+    desc   = request.args.get("欄位說明", "")
+
+    allowed = {"使用者人數","代理收付金額_千元","移轉匯兌金額_千元","收受儲值金額_千元","儲值餘額_千元","代理收付餘額_千元","各類餘額合計_千元"}
+    if metric not in allowed:
+        return jsonify({"error": "invalid metric"}), 400
+
+    conn = get_conn()
+    where_parts = []
+    params = []
+    if inst:
+        where_parts.append('機構名稱 = ?')
+        params.append(inst)
+    if desc:
+        where_parts.append('"欄位說明" = ?')
+        params.append(desc)
+    where_sql = "WHERE " + " AND ".join(where_parts) if where_parts else ""
+
+    rows = conn.execute(
+        f'SELECT ym, yr, mn, SUM(CAST("{metric}" AS REAL)) '
+        f'FROM "全業者統計" {where_sql} '
+        f'GROUP BY yr, mn ORDER BY yr, mn',
+        params
+    ).fetchall()
+    conn.close()
+    return jsonify([{"ym": r[0], "yr": r[1], "mn": r[2], "value": r[3]} for r in rows])
+
+@app.route("/api/industry/latest")
+def api_industry_latest():
+    """最新一期各機構數據"""
+    conn = get_conn()
+    latest = conn.execute('SELECT yr, mn FROM "全業者統計" ORDER BY yr DESC, mn DESC LIMIT 1').fetchone()
+    if not latest:
+        conn.close()
+        return jsonify([])
+    yr, mn = latest
+    rows = conn.execute(
+        'SELECT 機構名稱, 使用者人數, 代理收付金額_千元, 移轉匯兌金額_千元, '
+        '欄位說明, 收受儲值金額_千元, 儲值餘額_千元, 代理收付餘額_千元, 各類餘額合計_千元 '
+        'FROM "全業者統計" WHERE yr=? AND mn=? ORDER BY 各類餘額合計_千元 DESC',
+        [yr, mn]
+    ).fetchall()
+    conn.close()
+    cols = ["機構名稱","使用者人數","代理收付金額_千元","移轉匯兌金額_千元","欄位說明",
+            "收受儲值金額_千元","儲值餘額_千元","代理收付餘額_千元","各類餘額合計_千元"]
+    return jsonify({
+        "ym": f"{yr}/{mn:02d}",
+        "data": [dict(zip(cols, r)) for r in rows]
+    })
+
+@app.route("/api/industry/by_inst")
+def api_industry_by_inst():
+    """單一機構歷史數據（含欄位說明拆分）"""
+    inst = request.args.get("inst", "")
+    if not inst:
+        return jsonify({"error": "inst required"}), 400
+    conn = get_conn()
+    rows = conn.execute(
+        'SELECT ym, yr, mn, 使用者人數, 代理收付金額_千元, 移轉匯兌金額_千元, '
+        '欄位說明, 收受儲值金額_千元, 儲值餘額_千元, 代理收付餘額_千元, 各類餘額合計_千元 '
+        'FROM "全業者統計" WHERE 機構名稱=? ORDER BY yr, mn, 欄位說明',
+        [inst]
+    ).fetchall()
+    conn.close()
+    cols = ["ym","yr","mn","使用者人數","代理收付金額_千元","移轉匯兌金額_千元",
+            "欄位說明","收受儲值金額_千元","儲值餘額_千元","代理收付餘額_千元","各類餘額合計_千元"]
+    return jsonify([dict(zip(cols, r)) for r in rows])
+
+
 # ══════════════════════════════════════════════════════════
 # Page
 # ══════════════════════════════════════════════════════════
