@@ -7,6 +7,7 @@
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
 <style>
 :root{--sidebar-w:220px;--primary:#1a56db;--bg:#f0f4f8}
 body{background:var(--bg);font-family:'Segoe UI',system-ui,sans-serif;font-size:14px}
@@ -26,6 +27,52 @@ body{background:var(--bg);font-family:'Segoe UI',system-ui,sans-serif;font-size:
 .stat-label{color:#64748b;font-size:12px}
 .table th{background:#f8fafc;font-weight:600;font-size:13px;white-space:nowrap}
 .table td{white-space:nowrap;font-size:13px}
+.table thead tr:first-child th[colspan]{border-bottom:2px solid #e2e8f0;font-size:12px;font-weight:700;text-transform:none}
+.table thead tr:last-child th{font-size:12px}
+/* Docs page */
+#docs-wrap{display:flex;gap:0;min-height:calc(100vh - 80px)}
+#docs-nav{width:220px;flex-shrink:0;position:sticky;top:80px;align-self:flex-start;max-height:calc(100vh - 100px);overflow-y:auto;background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.08);padding:10px 0}
+#docs-nav a{display:block;padding:5px 14px;font-size:12px;color:#475569;text-decoration:none;border-left:2px solid transparent;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:.1s}
+#docs-nav a:hover,#docs-nav a.active{color:#1a56db;border-left-color:#1a56db;background:#eff6ff}
+#docs-nav .nav-section{padding:8px 14px 3px;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px}
+#docs-content{flex:1;background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.08);padding:28px 36px;min-width:0}
+#docs-content h1{font-size:20px;font-weight:800;color:#1e293b;border-bottom:2px solid #e2e8f0;padding-bottom:10px;margin-bottom:16px}
+#docs-content h2{font-size:16px;font-weight:700;color:#1e293b;margin-top:28px;padding-bottom:6px;border-bottom:1px solid #e2e8f0}
+#docs-content h3{font-size:14px;font-weight:700;color:#1a56db;margin-top:22px;scroll-margin-top:80px;background:#eff6ff;padding:6px 12px;border-radius:6px;border-left:3px solid #1a56db}
+#docs-content table{width:100%;border-collapse:collapse;font-size:13px;margin:10px 0 18px}
+#docs-content table th{background:#f8fafc;padding:6px 10px;border:1px solid #e2e8f0;font-weight:600;white-space:nowrap;text-align:left}
+#docs-content table td{padding:5px 10px;border:1px solid #e2e8f0;vertical-align:top}
+#docs-content table tr:hover td{background:#fafbfc}
+#docs-content code{background:#f1f5f9;padding:1px 5px;border-radius:4px;font-size:12px;font-family:'SF Mono',monospace;color:#0f172a}
+#docs-content pre{background:#1e293b;color:#e2e8f0;padding:14px 16px;border-radius:8px;overflow-x:auto;font-size:12px;line-height:1.6;margin:10px 0}
+#docs-content pre code{background:none;color:inherit;padding:0}
+#docs-content blockquote{border-left:3px solid #e2e8f0;margin:8px 0;padding:4px 14px;color:#64748b;font-size:13px}
+#docs-content hr{border:none;border-top:1px solid #e2e8f0;margin:20px 0}
+#docs-content p{font-size:13px;color:#374151;line-height:1.7;margin:6px 0}
+#docs-search{width:100%;padding:6px 10px;font-size:12px;border:1px solid #e2e8f0;border-radius:6px;margin-bottom:8px}
+@media(max-width:767.98px){
+  #docs-nav{ display:none }
+  #docs-content{ padding:16px }
+}
+/* Row Detail Modal */
+.detail-inst-bar{background:#1e3a8a;color:#fff;border-radius:8px;padding:10px 16px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center}
+.detail-inst-bar .inst-name{font-size:15px;font-weight:700}
+.detail-inst-bar .inst-ym{font-size:13px;opacity:.85}
+.detail-group-hd{padding:7px 12px;font-weight:700;font-size:12px;border-radius:6px 6px 0 0;margin-top:10px;border:1px solid #e2e8f0;border-bottom:none}
+.detail-pivot-table{width:100%;border-collapse:collapse;font-size:13px;border:1px solid #e2e8f0;border-top:none;margin-bottom:0}
+.detail-pivot-table th{padding:5px 10px;font-size:12px;font-weight:600;text-align:right;white-space:nowrap}
+.detail-pivot-table th:first-child{text-align:left;width:45%}
+.detail-pivot-table td{padding:4px 10px;border-top:1px solid #f1f5f9;text-align:right;font-family:'SF Mono',monospace;white-space:nowrap}
+.detail-pivot-table td:first-child{text-align:left;color:#374151;font-family:inherit}
+.detail-pivot-table tr.row-highlight td{background:#eff6ff;font-weight:700;color:#1a56db}
+.detail-pivot-table tr:hover td{background:#fafafa}
+.detail-kv-table{width:100%;border-collapse:collapse;font-size:13px;border:1px solid #e2e8f0;border-top:none;margin-bottom:0}
+.detail-kv-table td{padding:5px 12px;border-top:1px solid #f1f5f9}
+.detail-kv-table td:first-child{color:#64748b;width:50%}
+.detail-kv-table td:last-child{text-align:right;font-family:'SF Mono',monospace}
+.detail-kv-table tr.row-highlight td{background:#eff6ff;font-weight:700;color:#1a56db}
+#browse-tbody tr{cursor:pointer}
+#browse-tbody tr:hover td{background:#f0f7ff!important}
 .diff-up{color:#16a34a;font-weight:600}
 .diff-down{color:#dc2626;font-weight:600}
 .diff-neutral{color:#64748b}
@@ -82,6 +129,7 @@ select.form-select,input.form-control{font-size:13px;border-radius:7px;border-co
     <li class="nav-item"><a class="nav-link" href="#" data-page="trend"><i class="bi bi-graph-up-arrow"></i>趨勢圖</a></li>
     <li class="nav-item"><a class="nav-link" href="#" data-page="import"><i class="bi bi-cloud-upload"></i>匯入資料</a></li>
     <li class="nav-item"><a class="nav-link" href="#" data-page="industry"><i class="bi bi-bar-chart-line"></i>全業者統計</a></li>
+    <li class="nav-item"><a class="nav-link" href="#" data-page="docs"><i class="bi bi-journal-text"></i>欄位說明</a></li>
   </ul>
 </nav>
 
@@ -135,9 +183,25 @@ select.form-select,input.form-control{font-size:13px;border-radius:7px;border-co
     </div>
     <div class="table-responsive">
       <table class="table table-hover table-sm mb-0" id="browse-table-el">
-        <thead><tr id="browse-thead"></tr></thead>
+        <thead id="browse-thead"></thead>
         <tbody id="browse-tbody"></tbody>
       </table>
+    </div>
+  </div>
+</div>
+
+<!-- ── 資料列詳情 Modal ── -->
+<div class="modal fade" id="rowDetailModal" tabindex="-1">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header py-2 px-3">
+        <div>
+          <h6 class="modal-title mb-0 fw-bold" id="rowDetailTitle"></h6>
+          <small class="text-muted" id="rowDetailCode"></small>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-3" id="rowDetailBody"></div>
     </div>
   </div>
 </div>
@@ -390,6 +454,24 @@ select.form-select,input.form-control{font-size:13px;border-radius:7px;border-co
   </div>
 </div>
 
+<!-- ── 欄位說明 ── -->
+<div id="page-docs" class="page">
+  <div class="topbar">
+    <div class="d-flex align-items-center">
+      <button class="btn-menu" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+      <div class="page-title mb-0"><i class="bi bi-journal-text text-primary"></i>欄位說明</div>
+    </div>
+    <input type="text" id="docs-search-top" class="form-control form-control-sm" style="width:200px" placeholder="搜尋表名或欄位…" oninput="docsFilter(this.value)">
+  </div>
+  <div id="docs-wrap">
+    <nav id="docs-nav">
+      <div class="nav-section">快速導覽</div>
+      <div id="docs-nav-links"></div>
+    </nav>
+    <div id="docs-content"><div class="text-center text-muted py-5"><i class="bi bi-arrow-clockwise"></i> 載入中…</div></div>
+  </div>
+</div>
+
 </div><!-- /main -->
 
 <!-- Mobile sidebar overlay -->
@@ -440,6 +522,7 @@ document.querySelectorAll('#sidebar .nav-link').forEach(el=>{
     if(page==='trend') initTrend();
     if(page==='import') loadImportLog();
     if(page==='industry') { if(!indLoaded) { indLoaded=true; loadIndustryPage(); } }
+    if(page==='docs') initDocs();
     // 手機：點選後自動關閉 sidebar
     if(window.innerWidth < 768){
       $('sidebar').classList.remove('open');
@@ -574,6 +657,8 @@ async function loadBrowseOrgs(){
     data.orgs.map(o=>`<option>${o}</option>`).join('');
 }
 
+let browseStructure = null;
+
 async function browseLoad(page){
   browsePage = page||1;
   const code = $('browse-table').value;
@@ -581,7 +666,12 @@ async function browseLoad(page){
   const yrTo = $('browse-yr-to').value;
   const mn   = $('browse-mn').value;
   const org  = $('browse-org').value;
+
+  // Fetch structure for this table
+  browseStructure = await api(`/api/table/${code}/structure`);
+
   let url = `/api/table/${code}/data?page=${browsePage}&per_page=${browsePerPage}`;
+  if(browseStructure) url += `&structured=1`;
   if(yr)   url+=`&yr=${yr}`;
   if(yrTo) url+=`&yr_to=${yrTo}`;
   if(mn)   url+=`&mn=${mn}`;
@@ -592,10 +682,68 @@ async function browseLoad(page){
   browseTotal = data.total;
 
   $('browse-count').textContent = `共 ${data.total.toLocaleString()} 筆`;
-  $('browse-thead').innerHTML = data.columns.map(c=>`<th>${c}</th>`).join('');
-  $('browse-tbody').innerHTML = data.rows.map(r=>
-    `<tr>${r.map(v=>`<td>${v!=null?v:''}</td>`).join('')}</tr>`
-  ).join('');
+
+  if(browseStructure){
+    // ── 多層次表頭（靜態欄 + 群組色塊）────────────────────────
+    const stat = browseStructure.static || [];
+    const groups = browseStructure.groups || [];
+    const statSet = new Set(stat.map(s=>s.col));
+
+    // 建立 col → index map（依 data.columns 的實際順序）
+    const colIdx = {};
+    data.columns.forEach((c,i)=>{ colIdx[c]=i; });
+
+    // Row 1：靜態欄(rowspan=2) + 群組名稱(colspan=N)
+    let row1 = stat.map(s=>{
+      const i = colIdx[s.col];
+      const lbl = (data.col_labels&&data.col_labels[i])||s.label||s.col;
+      return `<th rowspan="2" style="vertical-align:middle;background:#f8fafc">${lbl}</th>`;
+    }).join('');
+    row1 += groups.map(g=>{
+      const visibleCols = g.cols.filter(c=>c.col in colIdx);
+      if(!visibleCols.length) return '';
+      return `<th colspan="${visibleCols.length}" style="background:${g.bg||'#f8fafc'};text-align:center;border-bottom:none">${g.name}</th>`;
+    }).join('');
+
+    // Row 2：群組內各欄
+    let row2 = groups.map(g=>
+      g.cols.filter(c=>c.col in colIdx).map(c=>{
+        const i = colIdx[c.col];
+        const lbl = (data.col_labels&&data.col_labels[i])||c.label||c.col;
+        const hl = c.highlight ? 'font-weight:700;color:#1a56db' : '';
+        return `<th style="background:${g.bg||'#f8fafc'};${hl}">${lbl}</th>`;
+      }).join('')
+    ).join('');
+
+    $('browse-thead').innerHTML = `<tr>${row1}</tr><tr>${row2}</tr>`;
+
+    // 建立渲染順序（靜態 + 各群組欄依序）
+    const orderedCols = [
+      ...stat.map(s=>s.col),
+      ...groups.flatMap(g=>g.cols.map(c=>c.col))
+    ].filter(c=>c in colIdx);
+
+    $('browse-tbody').innerHTML = data.rows.map((r, ri)=>
+      `<tr onclick="showRowDetail(${ri})">${orderedCols.map(c=>{
+        const v = r[colIdx[c]];
+        return `<td>${v!=null?v:''}</td>`;
+      }).join('')}</tr>`
+    ).join('');
+
+  } else {
+    // ── 單層表頭（fallback）────────────────────────────────────
+    const labels = data.col_labels || data.columns;
+    $('browse-thead').innerHTML = '<tr>' + data.columns.map((c,i)=>{
+      const lbl = labels[i] || c;
+      const isSys = /^_\d+|^c_\d+/.test(c) || ['cards','xact','amt'].includes(c);
+      const style = isSys ? 'color:#6366f1;font-size:11px' : '';
+      const title = (isSys && lbl !== c) ? ` title="${c}"` : '';
+      return `<th style="${style}"${title}>${lbl}</th>`;
+    }).join('') + '</tr>';
+    $('browse-tbody').innerHTML = data.rows.map((r, ri)=>
+      `<tr onclick="showRowDetail(${ri})">${r.map(v=>`<td>${v!=null?v:''}</td>`).join('')}</tr>`
+    ).join('');
+  }
 
   // Pagination
   const totalPages = Math.ceil(data.total / browsePerPage);
@@ -719,7 +867,7 @@ async function compareLoad(){
     cmpChart = new Chart($('chart-compare'), {
       type: 'bar',
       data: {
-        labels: chartItems.map(r => r.col.length > 14 ? r.col.slice(0,13)+'…' : r.col),
+        labels: chartItems.map(r => { const s=r.label||r.col; return s.length>14?s.slice(0,13)+'…':s; }),
         datasets: [{
           label: '增減幅度 %',
           data: chartItems.map(r => r.pct),
@@ -737,7 +885,7 @@ async function compareLoad(){
           legend: { display: false },
           tooltip: {
             callbacks: {
-              title: c => chartItems[c[0].dataIndex].col,
+              title: c => chartItems[c[0].dataIndex].label || chartItems[c[0].dataIndex].col,
               label: c => {
                 const r = chartItems[c.dataIndex];
                 const sign = c.parsed.x >= 0 ? '+' : '';
@@ -770,6 +918,10 @@ async function compareLoad(){
     const pctStr  = r.pct!=null  ? (r.pct>=0?'+':'')+r.pct+'%'    : '-';
     const barW    = r.pct!=null  ? Math.round(Math.abs(r.pct)/MAX_PCT*100) : 0;
     const barClr  = r.pct>0 ? '#16a34a' : r.pct<0 ? '#dc2626' : '#94a3b8';
+    // 顯示標籤；若 label 與 col 不同則同時顯示欄位名作為 tooltip
+    const displayName = (r.label && r.label !== r.col)
+      ? `<span title="${r.col}">${r.label}</span>`
+      : r.col;
     const barHtml = r.pct!=null ? `
       <div class="d-flex align-items-center gap-1">
         <div style="flex:1;height:8px;background:#f1f5f9;border-radius:4px;overflow:hidden">
@@ -778,7 +930,7 @@ async function compareLoad(){
         <span class="${cls}" style="font-size:11px;min-width:46px;text-align:right">${pctStr}</span>
       </div>` : '<span class="text-muted">─</span>';
     return `<tr>
-      <td class="fw-medium">${r.col}</td>
+      <td class="fw-medium">${displayName}</td>
       <td class="text-end" style="color:#6366f1">${fmt(r.v1)}</td>
       <td class="text-end" style="color:#ea580c">${fmt(r.v2)}</td>
       <td class="text-end ${cls}">${diffStr}</td>
@@ -805,7 +957,7 @@ async function trendTableChange(){
     api(`/api/table/${code}/data?per_page=1`)
   ]);
   const numCols = cols.filter(c=>c.numeric && !['yr','mn'].includes(c.name));
-  $('trend-col').innerHTML = numCols.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');
+  $('trend-col').innerHTML = numCols.map(c=>`<option value="${c.name}">${c.label||c.name}</option>`).join('');
   $('trend-org').innerHTML = '<option value="">全部合計</option>' + data.orgs.map(o=>`<option>${o}</option>`).join('');
 }
 
@@ -1005,6 +1157,203 @@ async function indRefreshLatest() {
       <td class="text-end">${fmtBig(r.各類餘額合計_千元)}</td>
       <td><small class="text-muted">${r.欄位說明||''}</small></td>
     </tr>`).join('');
+}
+
+// ══════════════════════════════════════════════════════════
+// Row Detail Modal
+// ══════════════════════════════════════════════════════════
+
+let _rowDetailModal = null;
+
+function showRowDetail(ri){
+  const row  = browseData.rows[ri];
+  const cols = browseData.columns;
+  const lbls = browseData.col_labels || cols;
+  const code = $('browse-table').value;
+
+  // 建立 col -> value map（原始欄名）
+  const dataMap = {};
+  cols.forEach((c,i)=>{ dataMap[c] = row[i]; });
+
+  // Header
+  const inst = dataMap['機構名稱'] || '';
+  const yr   = dataMap['yr'] || '';
+  const mn   = dataMap['mn'] || '';
+  $('rowDetailTitle').textContent = inst || code;
+  $('rowDetailCode').textContent  = `${code}　${yr} 年 ${mn} 月`;
+
+  let html = '';
+
+  if(browseStructure){
+    // ── 依 TABLE_STRUCTURE 群組渲染 ─────────────────────────
+    // 先加靜態欄（排除 yr/mn/機構名稱）
+    const skipStatic = new Set(['yr','mn','ym','機構名稱','資料月份']);
+    const extraStatic = (browseStructure.static||[]).filter(s=>!skipStatic.has(s.col) && dataMap[s.col]!=null && dataMap[s.col]!=='');
+    if(extraStatic.length){
+      html += '<div class="detail-group-hd" style="background:#f8fafc;margin-top:0">基本資訊</div>';
+      html += '<table class="detail-kv-table"><tbody>';
+      for(const s of extraStatic){
+        html += `<tr><td>${s.label||s.col}</td><td>${fmtN(dataMap[s.col])}</td></tr>`;
+      }
+      html += '</tbody></table>';
+    }
+
+    for(const g of browseStructure.groups){
+      const gCols = g.cols.filter(c=> cols.includes(c.col));
+      if(!gCols.length) continue;
+
+      // 跳過整組全 null
+      const hasData = gCols.some(c=> dataMap[c.col]!=null && dataMap[c.col]!=='');
+      if(!hasData) continue;
+
+      html += `<div class="detail-group-hd" style="background:${g.bg||'#f8fafc'}">${g.name}</div>`;
+
+      // 偵測 ×人數/×筆數/×金額 三指標 pivot 模式
+      const METRICS_SUFFIX = ['×人數','×筆數','×金額'];
+      const isTriple = gCols.length >= 3 && gCols.length % 3 === 0
+        && gCols.every(c=> METRICS_SUFFIX.some(m=> c.label.endsWith(m)));
+
+      if(isTriple){
+        // Pivot 成矩陣表：列=類別，欄=人數/筆數/金額
+        html += `<table class="detail-pivot-table">
+          <thead><tr style="background:${g.bg||'#f8fafc'}">
+            <th>使用者類別</th>
+            <th>使用者人數</th><th>交易筆數</th><th>交易金額（元）</th>
+          </tr></thead><tbody>`;
+        for(let i=0; i<gCols.length; i+=3){
+          const cat = gCols[i].label.replace('×人數','');
+          const hl  = gCols[i].highlight ? ' class="row-highlight"' : '';
+          html += `<tr${hl}>
+            <td>${cat}</td>
+            <td>${fmtN(dataMap[gCols[i].col])}</td>
+            <td>${fmtN(dataMap[gCols[i+1].col])}</td>
+            <td>${fmtN(dataMap[gCols[i+2].col])}</td>
+          </tr>`;
+        }
+        html += '</tbody></table>';
+      } else {
+        // 一般 label-value 表
+        html += '<table class="detail-kv-table"><tbody>';
+        for(const c of gCols){
+          const v = dataMap[c.col];
+          if(v==null || v==='') continue;
+          const hl = c.highlight ? ' class="row-highlight"' : '';
+          html += `<tr${hl}><td>${c.label}</td><td>${fmtN(v)}</td></tr>`;
+        }
+        html += '</tbody></table>';
+      }
+    }
+
+  } else {
+    // ── Fallback：所有欄依序顯示 ───────────────────────────
+    html += '<table class="detail-kv-table"><tbody>';
+    cols.forEach((c,i)=>{
+      const v = row[i];
+      if(v==null || v==='') return;
+      const isMeta = ['yr','mn','ym','機構名稱','資料月份'].includes(c);
+      if(isMeta) return;
+      html += `<tr><td>${lbls[i]||c}</td><td>${fmtN(v)}</td></tr>`;
+    });
+    html += '</tbody></table>';
+  }
+
+  $('rowDetailBody').innerHTML = html;
+  if(!_rowDetailModal) _rowDetailModal = new bootstrap.Modal(document.getElementById('rowDetailModal'));
+  _rowDetailModal.show();
+}
+
+function fmtN(v){
+  if(v==null || v==='') return '—';
+  const n = Number(String(v).replace(/,/g,''));
+  if(!isNaN(n) && String(v).trim()!=='') return n.toLocaleString('zh-TW');
+  return v;
+}
+
+// ══════════════════════════════════════════════════════════
+// Docs page
+// ══════════════════════════════════════════════════════════
+
+let _docsLoaded = false;
+let _docsRawHtml = '';
+
+async function initDocs(){
+  if(_docsLoaded) return;
+  const md = await fetch('/api/docs').then(r=>r.text());
+
+  // Configure marked
+  marked.setOptions({ gfm:true, breaks:false });
+  _docsRawHtml = marked.parse(md);
+
+  $('docs-content').innerHTML = _docsRawHtml;
+
+  // Add IDs to h3 headings for anchor nav
+  $('docs-content').querySelectorAll('h3').forEach((el,i)=>{
+    if(!el.id){
+      el.id = 'sec-' + i;
+    }
+  });
+
+  // Build nav links from h2 + h3
+  const navEl = $('docs-nav-links');
+  let navHtml = '';
+  $('docs-content').querySelectorAll('h2,h3').forEach(el=>{
+    if(el.tagName==='H2'){
+      navHtml += `<div class="nav-section" style="margin-top:6px">${el.textContent}</div>`;
+    } else {
+      const code = el.textContent.match(/^[A-Z0-9]{4,6}/)?.[0] || '';
+      const label = code ? `<span style="color:#1a56db;font-weight:700;margin-right:4px">${code}</span>${el.textContent.replace(code,'').split(' ')[0]}` : el.textContent;
+      navHtml += `<a href="#${el.id}" onclick="docsScrollTo('${el.id}')">${label}</a>`;
+    }
+  });
+  navEl.innerHTML = navHtml;
+
+  // Highlight active nav on scroll
+  const observer = new IntersectionObserver(entries=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting){
+        navEl.querySelectorAll('a').forEach(a=>a.classList.toggle('active', a.getAttribute('href')==='#'+e.target.id));
+      }
+    });
+  }, {rootMargin:'-20% 0px -70% 0px'});
+  $('docs-content').querySelectorAll('h3').forEach(el=>observer.observe(el));
+
+  _docsLoaded = true;
+}
+
+function docsScrollTo(id){
+  const el = document.getElementById(id);
+  if(el) el.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function docsFilter(q){
+  if(!_docsLoaded) return;
+  q = q.trim().toLowerCase();
+  if(!q){
+    $('docs-content').innerHTML = _docsRawHtml;
+    // Re-add IDs
+    $('docs-content').querySelectorAll('h3').forEach((el,i)=>{ el.id='sec-'+i; });
+    return;
+  }
+  // Highlight matching sections: show h3 + its following content until next h3
+  const nodes = Array.from($('docs-content').children);
+  // Re-parse and filter by section
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(_docsRawHtml, 'text/html');
+  const allNodes = Array.from(doc.body.children);
+  let result = '', inMatch = false;
+  for(const n of allNodes){
+    if(n.tagName==='H3'){
+      inMatch = n.textContent.toLowerCase().includes(q);
+    }
+    if(n.tagName==='H1'||n.tagName==='H2'||n.tagName==='HR'){
+      result += n.outerHTML; continue;
+    }
+    if(inMatch || n.outerHTML.toLowerCase().includes(q)){
+      result += n.outerHTML;
+    }
+  }
+  $('docs-content').innerHTML = result;
+  $('docs-content').querySelectorAll('h3').forEach((el,i)=>{ el.id='sec-'+i; });
 }
 
 // ── Init ───────────────────────────────────────────────────
