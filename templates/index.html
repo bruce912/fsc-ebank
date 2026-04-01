@@ -29,6 +29,30 @@ body{background:var(--bg);font-family:'Segoe UI',system-ui,sans-serif;font-size:
 .table td{white-space:nowrap;font-size:13px}
 .table thead tr:first-child th[colspan]{border-bottom:2px solid #e2e8f0;font-size:12px;font-weight:700;text-transform:none}
 .table thead tr:last-child th{font-size:12px}
+/* Monthly Pass page */
+.mp-stat-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.mp-stat{background:#fff;border-radius:12px;padding:14px 18px;box-shadow:0 1px 4px rgba(0,0,0,.08);flex:1;min-width:160px}
+.mp-stat .label{font-size:12px;color:#64748b;margin-bottom:4px}
+.mp-stat .val{font-size:22px;font-weight:700;color:#1e293b}
+.mp-stat .sub{font-size:11px;color:#94a3b8;margin-top:2px}
+.mp-sys-bar{display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap}
+.mp-sys-card{flex:1;min-width:140px;border-radius:10px;padding:12px 16px;color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+.mp-sys-card.svc{background:linear-gradient(135deg,#1a56db,#3b82f6)}
+.mp-sys-card.qr{background:linear-gradient(135deg,#7c3aed,#a78bfa)}
+.mp-sys-card .sys-label{font-size:13px;font-weight:700;opacity:.9;margin-bottom:6px}
+.mp-sys-card .sys-val{font-size:18px;font-weight:800}
+.mp-sys-card .sys-sub{font-size:11px;opacity:.8;margin-top:2px}
+.mp-section-title{font-size:14px;font-weight:700;color:#1e293b;margin:18px 0 10px;display:flex;align-items:center;gap:6px}
+.mp-table th{background:#f8fafc;font-size:12px;font-weight:600;white-space:nowrap}
+.mp-table td{font-size:13px;white-space:nowrap}
+.mp-table td.num{text-align:right;font-family:'SF Mono',monospace}
+.mp-table .sys-svc{background:#eff6ff;color:#1d4ed8;padding:1px 7px;border-radius:4px;font-size:11px;font-weight:600}
+.mp-table .sys-qr{background:#f5f3ff;color:#6d28d9;padding:1px 7px;border-radius:4px;font-size:11px;font-weight:600}
+.mp-chart-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px}
+@media(max-width:767.98px){
+  .mp-chart-row{grid-template-columns:1fr}
+  .mp-sys-card{min-width:120px}
+}
 /* Docs page */
 #docs-wrap{display:flex;gap:0;min-height:calc(100vh - 80px)}
 #docs-nav{width:220px;flex-shrink:0;position:sticky;top:80px;align-self:flex-start;max-height:calc(100vh - 100px);overflow-y:auto;background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.08);padding:10px 0}
@@ -129,6 +153,7 @@ select.form-select,input.form-control{font-size:13px;border-radius:7px;border-co
     <li class="nav-item"><a class="nav-link" href="#" data-page="trend"><i class="bi bi-graph-up-arrow"></i>趨勢圖</a></li>
     <li class="nav-item"><a class="nav-link" href="#" data-page="import"><i class="bi bi-cloud-upload"></i>匯入資料</a></li>
     <li class="nav-item"><a class="nav-link" href="#" data-page="industry"><i class="bi bi-bar-chart-line"></i>全業者統計</a></li>
+    <li class="nav-item"><a class="nav-link" href="#" data-page="monthly-pass"><i class="bi bi-ticket-perforated"></i>月票統計</a></li>
     <li class="nav-item"><a class="nav-link" href="#" data-page="docs"><i class="bi bi-journal-text"></i>欄位說明</a></li>
   </ul>
 </nav>
@@ -170,7 +195,10 @@ select.form-select,input.form-control{font-size:13px;border-radius:7px;border-co
         <option>9</option><option>10</option><option>11</option><option>12</option>
       </select>
     </div>
-    <div><label>機構</label><select id="browse-org" class="form-select" style="width:160px"><option value="">全部</option></select></div>
+    <div id="browse-org-wrap"><label>機構</label><select id="browse-org" class="form-select" style="width:160px"><option value="">全部</option></select></div>
+    <div id="browse-scheme-wrap" style="display:none"><label>方案</label>
+      <select id="browse-scheme" class="form-select" style="width:180px"><option value="">全部方案</option></select>
+    </div>
     <div class="d-flex gap-2">
       <button class="btn btn-primary" onclick="browseLoad(1)"><i class="bi bi-search me-1"></i>查詢</button>
       <button class="btn btn-outline-secondary" onclick="browseExport()"><i class="bi bi-download me-1"></i>匯出CSV</button>
@@ -184,7 +212,7 @@ select.form-select,input.form-control{font-size:13px;border-radius:7px;border-co
     <div class="table-responsive">
       <table class="table table-hover table-sm mb-0" id="browse-table-el">
         <thead id="browse-thead"></thead>
-        <tbody id="browse-tbody"></tbody>
+        <tbody id="browse-tbody" translate="no"></tbody>
       </table>
     </div>
   </div>
@@ -223,9 +251,13 @@ select.form-select,input.form-control{font-size:13px;border-radius:7px;border-co
           <label class="form-label mb-1 small fw-semibold">資料表</label>
           <select id="cmp-table" class="form-select form-select-sm" style="width:230px"></select>
         </div>
-        <div>
+        <div id="cmp-org-wrap">
           <label class="form-label mb-1 small fw-semibold">機構</label>
           <select id="cmp-org" class="form-select form-select-sm" style="width:160px"><option value="">全部合計</option></select>
+        </div>
+        <div id="cmp-scheme-wrap" style="display:none">
+          <label class="form-label mb-1 small fw-semibold">方案名稱</label>
+          <select id="cmp-scheme" class="form-select form-select-sm" style="width:180px"><option value="">全部方案</option></select>
         </div>
         <div>
           <label class="form-label mb-1 small fw-semibold">月份 A</label>
@@ -309,7 +341,10 @@ select.form-select,input.form-control{font-size:13px;border-radius:7px;border-co
   <div class="filter-bar">
     <div><label>資料表</label><select id="trend-table" class="form-select" style="width:200px" onchange="trendTableChange()"></select></div>
     <div><label>欄位</label><select id="trend-col" class="form-select" style="width:220px"></select></div>
-    <div><label>機構</label><select id="trend-org" class="form-select" style="width:150px"><option value="">全部合計</option></select></div>
+    <div id="trend-org-wrap"><label>機構</label><select id="trend-org" class="form-select" style="width:150px"><option value="">全部合計</option></select></div>
+    <div id="trend-scheme-wrap" style="display:none"><label>方案</label>
+      <select id="trend-scheme" class="form-select" style="width:180px"><option value="">全部方案</option></select>
+    </div>
     <button class="btn btn-primary" onclick="trendLoad()"><i class="bi bi-graph-up me-1"></i>顯示</button>
   </div>
   <div class="row g-3">
@@ -454,6 +489,73 @@ select.form-select,input.form-control{font-size:13px;border-radius:7px;border-co
   </div>
 </div>
 
+<!-- ── 月票統計 ── -->
+<div id="page-monthly-pass" class="page">
+  <div class="topbar">
+    <div class="d-flex align-items-center">
+      <button class="btn-menu" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+      <div class="page-title mb-0"><i class="bi bi-ticket-perforated text-primary"></i>行政院月票交易統計</div>
+    </div>
+    <div class="d-flex gap-2 align-items-center">
+      <label style="font-size:12px;color:#64748b">月份</label>
+      <select id="mp-ym-sel" class="form-select form-select-sm" style="width:110px" onchange="mpLoad()"></select>
+    </div>
+  </div>
+
+  <!-- KPI 列 -->
+  <div class="mp-stat-row" id="mp-kpi" translate="no"></div>
+
+  <!-- 方案排行色塊 -->
+  <div class="mp-section-title"><i class="bi bi-trophy text-primary"></i>方案排行（本月 Top 5）</div>
+  <div class="mp-sys-bar" id="mp-sys-cards" translate="no"></div>
+
+  <!-- 圖表列 -->
+  <div class="mp-chart-row">
+    <div class="chart-box">
+      <div class="mp-section-title mb-2"><i class="bi bi-graph-up text-primary"></i>各月趨勢（Top 5 方案筆數）</div>
+      <div style="position:relative;height:220px"><canvas id="mp-trend-chart"></canvas></div>
+    </div>
+    <div class="chart-box">
+      <div class="mp-section-title mb-2"><i class="bi bi-pie-chart text-primary"></i>方案佔比（本月筆數）</div>
+      <div style="position:relative;height:220px"><canvas id="mp-pie-chart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- 方案排行表 -->
+  <div class="mp-section-title"><i class="bi bi-list-ol text-primary"></i>各方案明細
+    <div class="ms-auto d-flex gap-2">
+      <select id="mp-sys-filter" class="form-select form-select-sm" style="width:100px" onchange="mpRenderScheme()">
+        <option value="">全部體系</option>
+        <option value="SVC">SVC</option>
+        <option value="QR">QR</option>
+      </select>
+    </div>
+  </div>
+  <div class="card">
+    <div class="table-responsive">
+      <table class="table table-hover table-sm mb-0 mp-table" translate="no">
+        <thead><tr>
+          <th translate="yes">方案代碼</th><th translate="yes">方案名稱</th><th translate="yes">體系別</th>
+          <th class="text-end" translate="yes">交易筆數</th><th class="text-end" translate="yes">交易金額（元）</th>
+          <th class="text-end" translate="yes">筆數佔比</th>
+        </tr></thead>
+        <tbody id="mp-scheme-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 方案月趨勢表 -->
+  <div class="mp-section-title mt-4"><i class="bi bi-table text-primary"></i>方案月份彙整（Top 5 方案筆數）</div>
+  <div class="card">
+    <div class="table-responsive">
+      <table id="mp-scheme-trend-table" class="table table-hover table-sm mb-0 mp-table" translate="no">
+        <thead><tr id="mp-scheme-trend-thead"></tr></thead>
+        <tbody id="mp-scheme-trend-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
 <!-- ── 欄位說明 ── -->
 <div id="page-docs" class="page">
   <div class="topbar">
@@ -523,6 +625,7 @@ document.querySelectorAll('#sidebar .nav-link').forEach(el=>{
     if(page==='import') loadImportLog();
     if(page==='industry') { if(!indLoaded) { indLoaded=true; loadIndustryPage(); } }
     if(page==='docs') initDocs();
+    if(page==='monthly-pass') initMonthlyPass();
     // 手機：點選後自動關閉 sidebar
     if(window.innerWidth < 768){
       $('sidebar').classList.remove('open');
@@ -597,9 +700,12 @@ function gaugeHtml(pct){
 
 async function loadDashboard(){
   $('db-update-time').textContent = '最後讀取：'+new Date().toLocaleString('zh-TW');
-  const groups = await api('/api/dashboard');
+  const [groups, mpBySystem] = await Promise.all([
+    api('/api/dashboard'),
+    api('/api/monthly_pass/by_system')
+  ]);
 
-  $('dashboard-kpi').innerHTML = groups.map(g=>`
+  let html = groups.map(g=>`
     <div class="mb-4">
       <div class="d-flex align-items-center gap-2 mb-2">
         <span class="fw-bold fs-6 text-dark">${g.group}</span>
@@ -629,6 +735,73 @@ async function loadDashboard(){
           </div>`).join('')}
       </div>
     </div>`).join('');
+
+  // ── 月票交易統計區塊 ────────────────────────────────────
+  if(mpBySystem && mpBySystem.length){
+    const allYms   = [...new Set(mpBySystem.map(r=>r.ym))].sort();
+    const latestYm = allYms[allYms.length-1];
+    const prevYm   = allYms.length>1 ? allYms[allYms.length-2] : null;
+
+    const makeMap = ym => {
+      const m = {};
+      mpBySystem.filter(r=>r.ym===ym).forEach(r=>{ m[r['體系別']]=r; });
+      return m;
+    };
+    const lat  = makeMap(latestYm);
+    const prev = prevYm ? makeMap(prevYm) : null;
+
+    const svc  = lat['SVC']||{交易筆數:0,交易金額:0};
+    const qr   = lat['QR'] ||{交易筆數:0,交易金額:0};
+    const totX = (svc['交易筆數']||0)+(qr['交易筆數']||0);
+    const totA = (svc['交易金額']||0)+(qr['交易金額']||0);
+    const pct  = (cur,prv,k)=> prv&&prv[k] ? Math.round((cur[k]-prv[k])/Math.abs(prv[k])*1000)/10 : null;
+
+    const prevTotX = prev ? ((prev['SVC']?.['交易筆數']||0)+(prev['QR']?.['交易筆數']||0)) : null;
+    const prevTotA = prev ? ((prev['SVC']?.['交易金額']||0)+(prev['QR']?.['交易金額']||0)) : null;
+
+    const _SVC_COLOR='#1a56db', _QR_COLOR='#7c3aed', _TOT_COLOR='#0f766e';
+    const kpis = [
+      {label:'SVC 交易筆數', value:svc['交易筆數'], prev:prev?.['SVC']?.['交易筆數'], pct:pct(svc,prev?.['SVC'],'交易筆數'), unit:'筆', color:_SVC_COLOR},
+      {label:'SVC 交易金額', value:svc['交易金額'], prev:prev?.['SVC']?.['交易金額'], pct:pct(svc,prev?.['SVC'],'交易金額'), unit:'元', color:_SVC_COLOR},
+      {label:'QR 交易筆數',  value:qr['交易筆數'],  prev:prev?.['QR']?.['交易筆數'],  pct:pct(qr, prev?.['QR'], '交易筆數'), unit:'筆', color:_QR_COLOR},
+      {label:'QR 交易金額',  value:qr['交易金額'],  prev:prev?.['QR']?.['交易金額'],  pct:pct(qr, prev?.['QR'], '交易金額'), unit:'元', color:_QR_COLOR},
+      {label:'合計筆數', value:totX, prev:prevTotX, pct:prevTotX?Math.round((totX-prevTotX)/Math.abs(prevTotX)*1000)/10:null, unit:'筆', color:_TOT_COLOR},
+      {label:'合計金額', value:totA, prev:prevTotA, pct:prevTotA?Math.round((totA-prevTotA)/Math.abs(prevTotA)*1000)/10:null, unit:'元', color:_TOT_COLOR},
+    ];
+
+    html += `
+      <div class="mb-4">
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <span class="fw-bold fs-6 text-dark">月票交易統計</span>
+          <span class="badge bg-secondary fw-normal">月票交易統計</span>
+          <small class="text-muted ms-1">最新：${latestYm}
+            ${prevYm?`<span class="text-muted">（對比 ${prevYm}）</span>`:''}
+          </small>
+          <button class="btn btn-sm btn-outline-primary ms-auto py-0 px-2"
+                  style="font-size:12px" onclick="document.querySelector('[data-page=&quot;monthly-pass&quot;]').click()">
+            <i class="bi bi-ticket-perforated me-1"></i>月票統計
+          </button>
+        </div>
+        <div class="row g-2">
+          ${kpis.map(k=>`
+            <div class="col-6 col-md-4 col-lg-2">
+              <div class="stat-card h-100" style="cursor:default;border-top:3px solid ${k.color}">
+                <div class="stat-label mb-1">${k.label}</div>
+                <div class="stat-num">${fmtBig(k.value)}</div>
+                <div class="d-flex justify-content-between align-items-center mt-1">
+                  <small class="text-muted">${k.unit}</small>
+                  ${trendBadge(k.pct)}
+                </div>
+                <div class="gauge-wrap">${gaugeHtml(k.pct)}</div>
+                ${k.prev!=null?`<div class="text-muted text-center" style="font-size:10px;margin-top:2px">
+                  前月：${fmtBig(k.prev)}</div>`:''}
+              </div>
+            </div>`).join('')}
+        </div>
+      </div>`;
+  }
+
+  $('dashboard-kpi').innerHTML = html;
 }
 
 function goBrowse(code){
@@ -642,6 +815,18 @@ function goBrowse(code){
 let browsePage = 1, browseTotal = 0, browsePerPage = 50;
 let browseData = {columns:[], rows:[]};
 
+// 月票交易統計 專用：顯示方案選擇器，隱藏機構選擇器
+function isMpTable(code){ return code === '月票交易統計'; }
+
+function toggleSchemeOrg(code){
+  const mp = isMpTable(code);
+  const orgWraps   = ['browse-org-wrap','cmp-org-wrap','trend-org-wrap'];
+  const schemWraps = ['browse-scheme-wrap','cmp-scheme-wrap','trend-scheme-wrap'];
+  orgWraps.forEach(id=>{ const el=$id(id); if(el) el.style.display = mp?'none':''; });
+  schemWraps.forEach(id=>{ const el=$id(id); if(el) el.style.display = mp?'':'none'; });
+}
+function $id(id){ return document.getElementById(id); }
+
 async function initBrowse(){
   const tables = await api('/api/tables');
   $('browse-table').innerHTML = tables.map(t=>`<option value="${t.code}">${t.code} ${t.desc}</option>`).join('');
@@ -652,9 +837,14 @@ async function initBrowse(){
 
 async function loadBrowseOrgs(){
   const code = $('browse-table').value;
+  toggleSchemeOrg(code);
   const data = await api(`/api/table/${code}/data?per_page=1`);
   $('browse-org').innerHTML = '<option value="">全部</option>' +
     data.orgs.map(o=>`<option>${o}</option>`).join('');
+  if(data.schemes && data.schemes.length){
+    $('browse-scheme').innerHTML = '<option value="">全部方案</option>' +
+      data.schemes.map(s=>`<option>${s}</option>`).join('');
+  }
 }
 
 let browseStructure = null;
@@ -665,17 +855,19 @@ async function browseLoad(page){
   const yr   = $('browse-yr-from').value;
   const yrTo = $('browse-yr-to').value;
   const mn   = $('browse-mn').value;
-  const org  = $('browse-org').value;
+  const org    = $('browse-org').value;
+  const scheme = $('browse-scheme').value;
 
   // Fetch structure for this table
   browseStructure = await api(`/api/table/${code}/structure`);
 
   let url = `/api/table/${code}/data?page=${browsePage}&per_page=${browsePerPage}`;
   if(browseStructure) url += `&structured=1`;
-  if(yr)   url+=`&yr=${yr}`;
-  if(yrTo) url+=`&yr_to=${yrTo}`;
-  if(mn)   url+=`&mn=${mn}`;
-  if(org)  url+=`&org=${encodeURIComponent(org)}`;
+  if(yr)     url+=`&yr=${yr}`;
+  if(yrTo)   url+=`&yr_to=${yrTo}`;
+  if(mn)     url+=`&mn=${mn}`;
+  if(org)    url+=`&org=${encodeURIComponent(org)}`;
+  if(scheme) url+=`&scheme=${encodeURIComponent(scheme)}`;
 
   const data = await api(url);
   browseData = data;
@@ -761,16 +953,18 @@ async function browseLoad(page){
 }
 
 function browseExport(){
-  const code = $('browse-table').value;
-  const yr   = $('browse-yr-from').value;
-  const yrTo = $('browse-yr-to').value;
-  const mn   = $('browse-mn').value;
-  const org  = $('browse-org').value;
+  const code   = $('browse-table').value;
+  const yr     = $('browse-yr-from').value;
+  const yrTo   = $('browse-yr-to').value;
+  const mn     = $('browse-mn').value;
+  const org    = $('browse-org').value;
+  const scheme = $('browse-scheme').value;
   let url = `/api/table/${code}/export?`;
-  if(yr)   url+=`yr=${yr}&`;
-  if(yrTo) url+=`yr_to=${yrTo}&`;
-  if(mn)   url+=`mn=${mn}&`;
-  if(org)  url+=`org=${encodeURIComponent(org)}&`;
+  if(yr)     url+=`yr=${yr}&`;
+  if(yrTo)   url+=`yr_to=${yrTo}&`;
+  if(mn)     url+=`mn=${mn}&`;
+  if(org)    url+=`org=${encodeURIComponent(org)}&`;
+  if(scheme) url+=`scheme=${encodeURIComponent(scheme)}&`;
   window.open(url, '_blank');
 }
 
@@ -788,6 +982,7 @@ async function initCompare(){
 
 async function cmpTableChange(){
   const code = $('cmp-table').value;
+  toggleSchemeOrg(code);
   const [months, data] = await Promise.all([
     api(`/api/table/${code}/months`),
     api(`/api/table/${code}/data?per_page=1`)
@@ -797,15 +992,21 @@ async function cmpTableChange(){
   $('cmp-m2').innerHTML = opts;
   if(months.length>1) $('cmp-m2').selectedIndex=1;
   $('cmp-org').innerHTML = '<option value="">全部合計</option>' + data.orgs.map(o=>`<option>${o}</option>`).join('');
+  if(data.schemes && data.schemes.length){
+    $('cmp-scheme').innerHTML = '<option value="">全部方案</option>' +
+      data.schemes.map(s=>`<option>${s}</option>`).join('');
+  }
 }
 
 async function compareLoad(){
-  const code = $('cmp-table').value;
-  const m1v = $('cmp-m1').value.split('_');
-  const m2v = $('cmp-m2').value.split('_');
-  const org  = $('cmp-org').value;
+  const code   = $('cmp-table').value;
+  const m1v    = $('cmp-m1').value.split('_');
+  const m2v    = $('cmp-m2').value.split('_');
+  const org    = $('cmp-org').value;
+  const scheme = $('cmp-scheme').value;
   let url = `/api/table/${code}/compare?yr1=${m1v[0]}&mn1=${m1v[1]}&yr2=${m2v[0]}&mn2=${m2v[1]}`;
-  if(org) url+=`&org=${encodeURIComponent(org)}`;
+  if(org)    url+=`&org=${encodeURIComponent(org)}`;
+  if(scheme) url+=`&scheme=${encodeURIComponent(scheme)}`;
 
   const data = await api(url);
   if(data.error){ toast(data.error,'danger'); return; }
@@ -952,6 +1153,7 @@ async function initTrend(){
 
 async function trendTableChange(){
   const code = $('trend-table').value;
+  toggleSchemeOrg(code);
   const [cols, data] = await Promise.all([
     api(`/api/table/${code}/columns`),
     api(`/api/table/${code}/data?per_page=1`)
@@ -959,16 +1161,22 @@ async function trendTableChange(){
   const numCols = cols.filter(c=>c.numeric && !['yr','mn'].includes(c.name));
   $('trend-col').innerHTML = numCols.map(c=>`<option value="${c.name}">${c.label||c.name}</option>`).join('');
   $('trend-org').innerHTML = '<option value="">全部合計</option>' + data.orgs.map(o=>`<option>${o}</option>`).join('');
+  if(data.schemes && data.schemes.length){
+    $('trend-scheme').innerHTML = '<option value="">全部方案</option>' +
+      data.schemes.map(s=>`<option>${s}</option>`).join('');
+  }
 }
 
 async function trendLoad(){
-  const code = $('trend-table').value;
-  const col  = $('trend-col').value;
-  const org  = $('trend-org').value;
+  const code   = $('trend-table').value;
+  const col    = $('trend-col').value;
+  const org    = $('trend-org').value;
+  const scheme = $('trend-scheme').value;
   if(!col){ toast('請選擇欄位','warning'); return; }
 
   let url = `/api/table/${code}/trend?col=${encodeURIComponent(col)}`;
-  if(org) url+=`&org=${encodeURIComponent(org)}`;
+  if(org)    url+=`&org=${encodeURIComponent(org)}`;
+  if(scheme) url+=`&scheme=${encodeURIComponent(scheme)}`;
 
   const rows = await api(url);
   const valid = rows.filter(r=>r.val!=null);
@@ -1354,6 +1562,218 @@ function docsFilter(q){
   }
   $('docs-content').innerHTML = result;
   $('docs-content').querySelectorAll('h3').forEach((el,i)=>{ el.id='sec-'+i; });
+}
+
+// ══════════════════════════════════════════════════════════
+// Monthly Pass Page
+// ══════════════════════════════════════════════════════════
+
+let _mpLoaded = false;
+let _mpBySystem = [];       // all months × system (SVC/QR)
+let _mpScheme = [];         // current month schemes (by 方案+體系別)
+let _mpSchemeMonthly = [];  // all months × scheme (SVC+QR combined)
+let _mpTrendChart = null;
+let _mpPieChart = null;
+
+// 取前 n 名方案（依筆數）
+function mpTopSchemes(schemeRows, n=5){
+  const map = {};
+  schemeRows.forEach(r=>{
+    const k = r['方案代碼'];
+    if(!map[k]) map[k]={代碼:k, 名稱:r['方案名稱'], 筆數:0, 金額:0};
+    map[k].筆數 += r['交易筆數']||0;
+    map[k].金額 += r['交易金額']||0;
+  });
+  return Object.values(map).sort((a,b)=>b.筆數-a.筆數).slice(0,n);
+}
+
+async function initMonthlyPass(){
+  if(_mpLoaded) return;
+  _mpLoaded = true;
+
+  // 載入月份清單
+  const periods = await api('/api/monthly_pass/periods');
+  const sel = $('mp-ym-sel');
+  sel.innerHTML = periods.map(p=>`<option value="${p.ym}">${p.ym}</option>`).join('');
+  // 預設選最新月
+  if(periods.length) sel.value = periods[periods.length-1].ym;
+
+  // 載入全月方案彙整（SVC+QR 合併）
+  _mpSchemeMonthly = await api('/api/monthly_pass/scheme_monthly');
+
+  await mpLoad();
+}
+
+async function mpLoad(){
+  const ym = $('mp-ym-sel').value;
+  if(!ym) return;
+
+  // 取指定月的方案明細（含體系別）
+  _mpScheme = await api(`/api/monthly_pass/by_scheme?ym=${encodeURIComponent(ym)}`);
+
+  // 計算本月總計
+  const totalXact = _mpScheme.reduce((s,r)=>s+(r['交易筆數']||0),0);
+  const totalAmt  = _mpScheme.reduce((s,r)=>s+(r['交易金額']||0),0);
+  const schemeCount = new Set(_mpScheme.map(r=>r['方案代碼'])).size;
+
+  // KPI
+  $('mp-kpi').innerHTML = `
+    <div class="mp-stat"><div class="label">月份</div><div class="val">${ym}</div></div>
+    <div class="mp-stat"><div class="label">合計交易筆數</div><div class="val">${totalXact.toLocaleString('zh-TW')}</div><div class="sub">筆</div></div>
+    <div class="mp-stat"><div class="label">合計交易金額</div><div class="val">${(totalAmt/1e6).toFixed(1)}</div><div class="sub">百萬元</div></div>
+    <div class="mp-stat"><div class="label">方案數</div><div class="val">${schemeCount}</div><div class="sub">個方案</div></div>
+  `;
+
+  // 方案排行色塊（Top 5）
+  const _CARD_GRADIENTS = [
+    'linear-gradient(135deg,#1a56db,#3b82f6)',
+    'linear-gradient(135deg,#7c3aed,#a78bfa)',
+    'linear-gradient(135deg,#0f766e,#14b8a6)',
+    'linear-gradient(135deg,#b45309,#f59e0b)',
+    'linear-gradient(135deg,#be185d,#f472b6)',
+  ];
+  const topSchemes = mpTopSchemes(_mpScheme, 5);
+  $('mp-sys-cards').innerHTML = topSchemes.map((s,i)=>`
+    <div class="mp-sys-card" style="background:${_CARD_GRADIENTS[i]}">
+      <div class="sys-label"><span style="opacity:.75;font-size:11px;margin-right:5px;font-family:monospace">${s.代碼}</span>${s.名稱}</div>
+      <div class="sys-val">${s.筆數.toLocaleString('zh-TW')} 筆</div>
+      <div class="sys-sub">${(s.金額/1e6).toFixed(2)} 百萬元 ／ 佔比 ${totalXact?((s.筆數/totalXact)*100).toFixed(1):0}%</div>
+    </div>
+  `).join('');
+
+  mpRenderScheme();
+  mpRenderTrendChart();
+  mpRenderPieChart();
+  mpRenderSchemeTrendTable();
+}
+
+function mpRenderScheme(){
+  const sysF = $('mp-sys-filter').value;
+  const rows = sysF ? _mpScheme.filter(r=>r['體系別']===sysF) : _mpScheme;
+  const totalX = rows.reduce((s,r)=>s+(r['交易筆數']||0),0);
+  $('mp-scheme-tbody').innerHTML = rows.map(r=>{
+    const pct = totalX ? ((r['交易筆數']/totalX)*100).toFixed(1) : '0.0';
+    const sysTag = r['體系別']==='SVC'
+      ? `<span class="sys-svc">SVC</span>`
+      : `<span class="sys-qr">QR</span>`;
+    return `<tr>
+      <td>${r['方案代碼']}</td>
+      <td>${r['方案名稱']||''}</td>
+      <td>${sysTag}</td>
+      <td class="num">${(r['交易筆數']||0).toLocaleString('zh-TW')}</td>
+      <td class="num">${(r['交易金額']||0).toLocaleString('zh-TW')}</td>
+      <td class="num">${pct}%</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="6" class="text-center text-muted py-3">無資料</td></tr>';
+}
+
+function mpRenderSchemeTrendTable(){
+  if(!_mpSchemeMonthly.length) return;
+
+  // 取全期間 top5 方案（依總筆數）
+  const top5 = mpTopSchemes(_mpSchemeMonthly, 5);
+  const topCodes = top5.map(s=>s.代碼);
+  const topNames = top5.map(s=>s.名稱);
+
+  // 月份清單
+  const allYms = [...new Set(_mpSchemeMonthly.map(r=>r.ym))].sort();
+
+  // 彙整：ym → { code: 筆數, total: 筆數 }
+  const byYm = {};
+  _mpSchemeMonthly.forEach(r=>{
+    if(!byYm[r.ym]) byYm[r.ym]={total:0};
+    byYm[r.ym].total += r['交易筆數']||0;
+    if(topCodes.includes(r['方案代碼']))
+      byYm[r.ym][r['方案代碼']] = (byYm[r.ym][r['方案代碼']]||0) + (r['交易筆數']||0);
+  });
+
+  // 動態表頭
+  document.querySelector('#mp-scheme-trend-thead').innerHTML =
+    '<th>月份</th>' +
+    top5.map(s=>`<th class="text-end"><span style="opacity:.7;font-size:10px;font-family:monospace;display:block">${s.代碼}</span>${s.名稱.length>6?s.名稱.slice(0,6)+'…':s.名稱}</th>`).join('') +
+    '<th class="text-end">其他</th><th class="text-end">合計</th>';
+
+  // 資料列
+  $('mp-scheme-trend-tbody').innerHTML = allYms.map(ym=>{
+    const row = byYm[ym]||{total:0};
+    const topTotal = topCodes.reduce((s,c)=>s+(row[c]||0),0);
+    const other = row.total - topTotal;
+    const cells = topCodes.map(c=>`<td class="num">${(row[c]||0).toLocaleString('zh-TW')}</td>`).join('');
+    return `<tr><td><strong>${ym}</strong></td>${cells}<td class="num">${other.toLocaleString('zh-TW')}</td><td class="num"><strong>${row.total.toLocaleString('zh-TW')}</strong></td></tr>`;
+  }).join('');
+}
+
+function mpRenderTrendChart(){
+  // 取本月 top5 方案代碼
+  const ym = $('mp-ym-sel').value;
+  const curMonthRows = _mpSchemeMonthly.filter(r=>r.ym===ym);
+  const top5 = mpTopSchemes(curMonthRows, 5);
+  const topCodes = top5.map(s=>s.代碼);
+  const topNames = top5.map(s=>s.名稱);
+
+  // 全月份清單
+  const allYms = [...new Set(_mpSchemeMonthly.map(r=>r.ym))].sort();
+
+  // 每個方案每月筆數
+  const byCode = {};
+  _mpSchemeMonthly.forEach(r=>{
+    if(!topCodes.includes(r['方案代碼'])) return;
+    if(!byCode[r['方案代碼']]) byCode[r['方案代碼']]={};
+    byCode[r['方案代碼']][r.ym] = (byCode[r['方案代碼']][r.ym]||0) + (r['交易筆數']||0);
+  });
+
+  const colors = ['#3b82f6','#a78bfa','#14b8a6','#f59e0b','#f472b6'];
+  const datasets = topCodes.map((code,i)=>({
+    label: topNames[i].length>8 ? topNames[i].slice(0,8)+'…' : topNames[i],
+    data: allYms.map(y=>byCode[code]?.[y]||0),
+    backgroundColor: colors[i],
+    stack:'s'
+  }));
+
+  if(_mpTrendChart) _mpTrendChart.destroy();
+  _mpTrendChart = new Chart($('mp-trend-chart'), {
+    type:'bar',
+    data:{ labels: allYms, datasets },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{position:'top',labels:{font:{size:10},boxWidth:12}}},
+      scales:{
+        x:{ticks:{font:{size:10}}},
+        y:{ticks:{font:{size:10}, callback:v=>(v/1e4).toFixed(0)+'萬'}}
+      }
+    }
+  });
+}
+
+function mpRenderPieChart(){
+  const top7 = mpTopSchemes(_mpScheme, 7);
+  const totalX = _mpScheme.reduce((s,r)=>s+(r['交易筆數']||0),0);
+  const topX   = top7.reduce((s,r)=>s+r.筆數,0);
+  const otherX = totalX - topX;
+
+  const labels = top7.map(s=>s.名稱.length>7 ? s.名稱.slice(0,7)+'…' : s.名稱);
+  const data   = top7.map(s=>s.筆數);
+  const colors = ['#3b82f6','#a78bfa','#14b8a6','#f59e0b','#f472b6','#34d399','#fb7185','#94a3b8'];
+  if(otherX>0){ labels.push('其他'); data.push(otherX); }
+
+  if(_mpPieChart) _mpPieChart.destroy();
+  _mpPieChart = new Chart($('mp-pie-chart'), {
+    type:'doughnut',
+    data:{
+      labels,
+      datasets:[{data, backgroundColor:colors.slice(0,data.length), borderWidth:2}]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{position:'bottom',labels:{font:{size:10},boxWidth:12}},
+        tooltip:{callbacks:{label:ctx=>{
+          const total=ctx.dataset.data.reduce((a,b)=>a+b,0);
+          return `${ctx.label}: ${ctx.raw.toLocaleString('zh-TW')} 筆 (${total?((ctx.raw/total)*100).toFixed(1):0}%)`;
+        }}}
+      }
+    }
+  });
 }
 
 // ── Init ───────────────────────────────────────────────────

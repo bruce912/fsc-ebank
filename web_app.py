@@ -39,6 +39,7 @@ TABLE_DESC = {
     "EP115W": "境外業務申訴",         "WB031W": "電話申訴辦理",
     "WB032W": "申訴服務專線",         "WB033W": "人民陳情案件",
     "WB041W": "行動支付業務",         "WB056W": "端末設備共用",
+    "月票交易統計": "行政院月票方案交易統計",
 }
 
 SKIP_COLS = {"維護部門名稱","主管姓名","主管電話","承辦人姓名","承辦人電話","承辦人E_MAIL"}
@@ -1077,6 +1078,7 @@ def api_data(code):
     mn    = request.args.get("mn", type=int)
     yr_to = request.args.get("yr_to", type=int)
     org   = request.args.get("org", "")
+    scheme = request.args.get("scheme", "")
     page  = request.args.get("page", 1, type=int)
     per_page = request.args.get("per_page", 50, type=int)
     structured = request.args.get("structured", "0") == "1"
@@ -1108,6 +1110,8 @@ def api_data(code):
     if mn:      conds.append("mn = ?");       params.append(mn)
     if org and "機構名稱" in cols:
         conds.append('機構名稱 = ?');           params.append(org)
+    if scheme and "方案名稱" in cols:
+        conds.append('方案名稱 = ?');           params.append(scheme)
 
     where = f"WHERE {' AND '.join(conds)}" if conds else ""
     total = conn.execute(f'SELECT COUNT(*) FROM "{code}" {where}', params).fetchone()[0]
@@ -1126,6 +1130,12 @@ def api_data(code):
         orgs = [r[0] for r in conn.execute(
             f'SELECT DISTINCT 機構名稱 FROM "{code}" ORDER BY 機構名稱'
         ).fetchall()]
+    # Distinct schemes
+    schemes = []
+    if "方案名稱" in cols:
+        schemes = [r[0] for r in conn.execute(
+            f'SELECT DISTINCT 方案名稱 FROM "{code}" WHERE 方案名稱 IS NOT NULL ORDER BY 方案名稱'
+        ).fetchall()]
 
     # 為系統欄位附上標籤（前端用於表頭顯示）
     tbl_labels = TABLE_COL_LABELS.get(code, {})
@@ -1140,7 +1150,8 @@ def api_data(code):
         "total":      total,
         "page":       page,
         "per_page":   per_page,
-        "orgs":       orgs
+        "orgs":       orgs,
+        "schemes":    schemes
     })
 
 
@@ -1150,7 +1161,8 @@ def api_compare(code):
     mn1 = request.args.get("mn1", type=int)
     yr2 = request.args.get("yr2", type=int)
     mn2 = request.args.get("mn2", type=int)
-    org = request.args.get("org", "")
+    org    = request.args.get("org", "")
+    scheme = request.args.get("scheme", "")
 
     if not all([yr1, mn1, yr2, mn2]):
         return jsonify({"error": "缺少參數"}), 400
@@ -1165,11 +1177,12 @@ def api_compare(code):
                     and c not in TEXT_CHINESE_COLS
                     and is_numeric_col(conn, code, c)]
 
-    cond_extra = ""
-    params_extra = []
+    conds_extra, params_extra = [], []
     if org and "機構名稱" in cols:
-        cond_extra = "AND 機構名稱 = ?"
-        params_extra = [org]
+        conds_extra.append("機構名稱 = ?");  params_extra.append(org)
+    if scheme and "方案名稱" in cols:
+        conds_extra.append("方案名稱 = ?");  params_extra.append(scheme)
+    cond_extra = ("AND " + " AND ".join(conds_extra)) if conds_extra else ""
 
     def fetch_period(yr, mn):
         rows = conn.execute(
@@ -1221,8 +1234,9 @@ def api_compare(code):
 
 @app.route("/api/table/<code>/trend")
 def api_trend(code):
-    col = request.args.get("col", "")
-    org = request.args.get("org", "")
+    col    = request.args.get("col", "")
+    org    = request.args.get("org", "")
+    scheme = request.args.get("scheme", "")
 
     conn = get_conn()
     cols = get_columns(conn, code)
@@ -1230,11 +1244,12 @@ def api_trend(code):
         conn.close()
         return jsonify({"error": "欄位不存在"}), 400
 
-    cond_extra = ""
-    params_extra = []
+    conds_extra, params_extra = [], []
     if org and "機構名稱" in cols:
-        cond_extra = "AND 機構名稱 = ?"
-        params_extra = [org]
+        conds_extra.append("機構名稱 = ?");  params_extra.append(org)
+    if scheme and "方案名稱" in cols:
+        conds_extra.append("方案名稱 = ?");  params_extra.append(scheme)
+    cond_extra = ("AND " + " AND ".join(conds_extra)) if conds_extra else ""
 
     rows = conn.execute(
         f'SELECT yr, mn, SUM(CAST("{col}" AS REAL)) as val '
@@ -1253,10 +1268,11 @@ def api_trend(code):
 
 @app.route("/api/table/<code>/export")
 def api_export(code):
-    yr    = request.args.get("yr", type=int)
-    mn    = request.args.get("mn", type=int)
-    yr_to = request.args.get("yr_to", type=int)
-    org   = request.args.get("org", "")
+    yr     = request.args.get("yr", type=int)
+    mn     = request.args.get("mn", type=int)
+    yr_to  = request.args.get("yr_to", type=int)
+    org    = request.args.get("org", "")
+    scheme = request.args.get("scheme", "")
 
     conn = get_conn()
     cols = get_columns(conn, code)
@@ -1268,6 +1284,8 @@ def api_export(code):
     if mn:      conds.append("mn = ?");   params.append(mn)
     if org and "機構名稱" in cols:
         conds.append('機構名稱 = ?');       params.append(org)
+    if scheme and "方案名稱" in cols:
+        conds.append('方案名稱 = ?');       params.append(scheme)
 
     where = f"WHERE {' AND '.join(conds)}" if conds else ""
     col_sql = ", ".join(f'"{c}"' for c in display_cols)
@@ -1529,6 +1547,143 @@ def api_industry_by_inst():
             "欄位說明","收受儲值金額_千元","儲值餘額_千元","代理收付餘額_千元","各類餘額合計_千元"]
     return jsonify([dict(zip(cols, r)) for r in rows])
 
+
+# ══════════════════════════════════════════════════════════
+# 月票交易統計 API
+# ══════════════════════════════════════════════════════════
+
+@app.route("/api/monthly_pass/periods")
+def mp_periods():
+    conn = get_conn()
+    rows = conn.execute(
+        'SELECT DISTINCT yr, mn, ym FROM "月票交易統計" ORDER BY yr, mn'
+    ).fetchall()
+    conn.close()
+    return jsonify([{"yr": r[0], "mn": r[1], "ym": r[2]} for r in rows])
+
+@app.route("/api/monthly_pass/schemes")
+def mp_schemes():
+    """回傳所有方案（代碼＋名稱去重）"""
+    conn = get_conn()
+    rows = conn.execute(
+        'SELECT DISTINCT 方案代碼, 方案名稱 FROM "月票交易統計" ORDER BY 方案代碼'
+    ).fetchall()
+    conn.close()
+    return jsonify([{"code": r[0], "name": r[1]} for r in rows])
+
+@app.route("/api/monthly_pass/by_system")
+def mp_by_system():
+    """各月份 × 體系別（SVC/QR）加總"""
+    conn = get_conn()
+    rows = conn.execute('''
+        SELECT ym, yr, mn, 體系別,
+               SUM(交易筆數) AS 交易筆數,
+               SUM(交易金額) AS 交易金額
+        FROM "月票交易統計"
+        GROUP BY yr, mn, 體系別
+        ORDER BY yr, mn, 體系別
+    ''').fetchall()
+    conn.close()
+    return jsonify([{
+        "ym": r[0], "yr": r[1], "mn": r[2],
+        "體系別": r[3], "交易筆數": r[4], "交易金額": r[5]
+    } for r in rows])
+
+@app.route("/api/monthly_pass/by_scheme")
+def mp_by_scheme():
+    """各月份 × 方案加總（可篩月份）"""
+    ym = request.args.get("ym", "")
+    conn = get_conn()
+    where = 'WHERE ym=?' if ym else ''
+    params = [ym] if ym else []
+    rows = conn.execute(f'''
+        SELECT ym, 方案代碼, 方案名稱, 體系別,
+               SUM(交易筆數) AS 交易筆數,
+               SUM(交易金額) AS 交易金額
+        FROM "月票交易統計"
+        {where}
+        GROUP BY ym, 方案代碼, 方案名稱, 體系別
+        ORDER BY ym, 方案代碼, 體系別
+    ''', params).fetchall()
+    conn.close()
+    return jsonify([{
+        "ym": r[0], "方案代碼": r[1], "方案名稱": r[2],
+        "體系別": r[3], "交易筆數": r[4], "交易金額": r[5]
+    } for r in rows])
+
+@app.route("/api/monthly_pass/trend")
+def mp_trend():
+    """指定方案代碼的歷史趨勢"""
+    scheme = request.args.get("scheme", "")
+    sys_   = request.args.get("sys", "")   # SVC / QR / 空=全部
+    conn = get_conn()
+    conds, params = [], []
+    if scheme:
+        conds.append('方案代碼=?'); params.append(scheme)
+    if sys_:
+        conds.append('體系別=?'); params.append(sys_)
+    where = ('WHERE ' + ' AND '.join(conds)) if conds else ''
+    rows = conn.execute(f'''
+        SELECT ym, yr, mn,
+               SUM(交易筆數) AS 交易筆數,
+               SUM(交易金額) AS 交易金額
+        FROM "月票交易統計" {where}
+        GROUP BY yr, mn ORDER BY yr, mn
+    ''', params).fetchall()
+    conn.close()
+    return jsonify([{
+        "ym": r[0], "yr": r[1], "mn": r[2],
+        "交易筆數": r[3], "交易金額": r[4]
+    } for r in rows])
+
+@app.route("/api/monthly_pass/latest_summary")
+def mp_latest_summary():
+    """最新月份：總計 + 體系別分計 + 各方案排行"""
+    conn = get_conn()
+    latest = conn.execute(
+        'SELECT yr, mn, ym FROM "月票交易統計" ORDER BY yr DESC, mn DESC LIMIT 1'
+    ).fetchone()
+    if not latest:
+        conn.close()
+        return jsonify({})
+    yr, mn, ym = latest
+
+    # 體系別加總
+    sys_rows = conn.execute('''
+        SELECT 體系別, SUM(交易筆數), SUM(交易金額)
+        FROM "月票交易統計" WHERE yr=? AND mn=?
+        GROUP BY 體系別 ORDER BY 體系別
+    ''', [yr, mn]).fetchall()
+
+    # 各方案排行（合計 SVC+QR）
+    scheme_rows = conn.execute('''
+        SELECT 方案代碼, 方案名稱,
+               SUM(交易筆數) AS 筆數, SUM(交易金額) AS 金額
+        FROM "月票交易統計" WHERE yr=? AND mn=?
+        GROUP BY 方案代碼, 方案名稱
+        ORDER BY 金額 DESC
+    ''', [yr, mn]).fetchall()
+
+    conn.close()
+    return jsonify({
+        "ym": ym, "yr": yr, "mn": mn,
+        "by_system": [{"體系別": r[0], "交易筆數": r[1], "交易金額": r[2]} for r in sys_rows],
+        "by_scheme": [{"方案代碼": r[0], "方案名稱": r[1], "交易筆數": r[2], "交易金額": r[3]} for r in scheme_rows],
+    })
+
+@app.route("/api/monthly_pass/scheme_monthly")
+def mp_scheme_monthly():
+    """各月份 × 方案 彙整（SVC+QR 加總）"""
+    conn = get_conn()
+    rows = conn.execute('''
+        SELECT yr, mn, ym, 方案代碼, 方案名稱,
+               SUM(交易筆數) AS 交易筆數, SUM(交易金額) AS 交易金額
+        FROM "月票交易統計"
+        GROUP BY yr, mn, ym, 方案代碼, 方案名稱
+        ORDER BY yr, mn, 方案代碼
+    ''').fetchall()
+    conn.close()
+    return jsonify([{"yr":r[0],"mn":r[1],"ym":r[2],"方案代碼":r[3],"方案名稱":r[4],"交易筆數":r[5],"交易金額":r[6]} for r in rows])
 
 # ══════════════════════════════════════════════════════════
 # Page
