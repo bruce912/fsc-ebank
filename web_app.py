@@ -12,16 +12,27 @@ import csv
 import re
 import os
 import io
+import sys
 from pathlib import Path
 from datetime import datetime
 from flask import Flask, jsonify, request, render_template, send_file
 
-BASE_DIR = Path(__file__).parent
-DB_PATH  = BASE_DIR / "fsc_ebank.db"
-UPLOAD_DIR = BASE_DIR / "uploads"
+# PyInstaller 打包後，資源在 sys._MEIPASS；開發時用 __file__ 所在目錄
+if getattr(sys, "frozen", False):
+    _BUNDLE_DIR = Path(sys._MEIPASS)        # 唯讀資源（templates/static）
+    _DATA_DIR   = Path(sys.executable).parent  # 可寫目錄（db/uploads 放在 exe 旁）
+else:
+    _BUNDLE_DIR = Path(__file__).parent
+    _DATA_DIR   = Path(__file__).parent
+
+BASE_DIR   = _BUNDLE_DIR
+DB_PATH    = _DATA_DIR / "fsc_ebank.db"
+UPLOAD_DIR = _DATA_DIR / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
 
-app = Flask(__name__, template_folder="templates", static_folder="static")
+app = Flask(__name__,
+            template_folder=str(_BUNDLE_DIR / "templates"),
+            static_folder=str(_BUNDLE_DIR / "static"))
 app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024  # 50 MB
 
 TABLE_DESC = {
@@ -1319,7 +1330,7 @@ def api_import():
 
     fname = f.filename
     ext = fname.rsplit(".", 1)[-1].lower()
-    content = f.read().decode("utf-8-sig")
+    raw_bytes = f.read()
 
     conn = get_conn()
     conn.row_factory = None
@@ -1327,31 +1338,40 @@ def api_import():
 
     results = []
     try:
-        if ext == "json":
-            data = json.loads(content)
-            # Format 1: {itemName, details}
-            if "details" in data and "itemName" in data:
-                tbl = data["itemName"].split("_")[0]
-                records = data["details"]
-                added, skipped = _upsert(conn, tbl, records, fname)
-                results.append({"table": tbl, "added": added, "skipped": skipped})
-            # Format 2: {tableKey: {details}}
-            elif isinstance(data, dict):
-                for key, content_v in data.items():
-                    if isinstance(content_v, dict) and "details" in content_v:
-                        tbl = key.split("_")[0]
-                        records = content_v["details"]
-                        added, skipped = _upsert(conn, tbl, records, fname)
-                        results.append({"table": tbl, "added": added, "skipped": skipped})
-        elif ext == "csv":
-            tbl_guess = re.split(r"[_\.]", fname)[0].upper()
-            reader = csv.DictReader(io.StringIO(content))
-            records = [dict(r) for r in reader]
-            added, skipped = _upsert(conn, tbl_guess, records, fname)
-            results.append({"table": tbl_guess, "added": added, "skipped": skipped})
+        if ext == "xlsx":
+            records = _parse_monthly_pass_excel(raw_bytes)
+            if not records:
+                conn.close()
+                return jsonify({"error": "Excel 中找不到月票交易資料（請確認格式正確）"}), 400
+            added, skipped = _upsert(conn, "月票交易統計", records, fname)
+            results.append({"table": "月票交易統計", "added": added, "skipped": skipped})
         else:
-            conn.close()
-            return jsonify({"error": "僅支援 .json 或 .csv 檔案"}), 400
+            content = raw_bytes.decode("utf-8-sig")
+            if ext == "json":
+                data = json.loads(content)
+                # Format 1: {itemName, details}
+                if "details" in data and "itemName" in data:
+                    tbl = data["itemName"].split("_")[0]
+                    records = data["details"]
+                    added, skipped = _upsert(conn, tbl, records, fname)
+                    results.append({"table": tbl, "added": added, "skipped": skipped})
+                # Format 2: {tableKey: {details}}
+                elif isinstance(data, dict):
+                    for key, content_v in data.items():
+                        if isinstance(content_v, dict) and "details" in content_v:
+                            tbl = key.split("_")[0]
+                            records = content_v["details"]
+                            added, skipped = _upsert(conn, tbl, records, fname)
+                            results.append({"table": tbl, "added": added, "skipped": skipped})
+            elif ext == "csv":
+                tbl_guess = re.split(r"[_\.]", fname)[0].upper()
+                reader = csv.DictReader(io.StringIO(content))
+                records = [dict(r) for r in reader]
+                added, skipped = _upsert(conn, tbl_guess, records, fname)
+                results.append({"table": tbl_guess, "added": added, "skipped": skipped})
+            else:
+                conn.close()
+                return jsonify({"error": "僅支援 .xlsx / .json / .csv 檔案"}), 400
 
         conn.commit()
     except Exception as e:
@@ -1379,6 +1399,75 @@ def api_import_log():
     ).fetchall()
     conn.close()
     return jsonify([dict(r) for r in rows])
+
+
+def _parse_monthly_pass_excel(file_bytes: bytes) -> list:
+    """解析『行政院月票交易統計報表』Excel，回傳可直接傳入 _upsert 的 dict 列表。
+    每個工作表為一個統計月份，取前 7 欄核心資料，忽略額外計算欄。
+    """
+    import openpyxl
+
+    CORE = ["方案代碼", "方案名稱", "體系別", "交易筆數", "交易金額", "統計年月", "資料最後更新日期"]
+    records = []
+
+    wb = openpyxl.load_workbook(io.BytesIO(file_bytes), read_only=True, data_only=True)
+    for sheet_name in wb.sheetnames:
+        ws = wb[sheet_name]
+        col_idx = {}  # colname → column index
+
+        for row_i, row in enumerate(ws.iter_rows(values_only=True)):
+            if row_i == 0:
+                # 建立欄位索引（只取核心欄）
+                for j, h in enumerate(row):
+                    if h in CORE:
+                        col_idx[h] = j
+                if "方案代碼" not in col_idx or "統計年月" not in col_idx:
+                    break  # 非月票格式，跳過
+                continue
+
+            if not any(v is not None for v in row):
+                continue  # 跳過空白列
+
+            rec = {}
+            for col, idx in col_idx.items():
+                rec[col] = row[idx] if idx < len(row) else None
+
+            # ── 方案代碼：統一為 2 位字串（補零）
+            code = rec.get("方案代碼")
+            if code is not None:
+                rec["方案代碼"] = str(code).strip().zfill(2)
+
+            # ── 統計年月：統一為 6 位字串，並衍生 yr / mn / ym
+            ym_raw = rec.get("統計年月")
+            if ym_raw is None:
+                continue
+            ym_str = str(int(float(str(ym_raw).strip())))  # e.g. "202412"
+            rec["統計年月"] = ym_str
+            yr_ad = int(ym_str[:4])
+            mn    = int(ym_str[4:6])
+            yr    = yr_ad - 1911
+            rec["yr"] = yr
+            rec["mn"] = mn
+            rec["ym"] = f"{yr}/{mn}"
+
+            # ── 資料最後更新日期：統一為字串
+            upd = rec.get("資料最後更新日期")
+            if upd is not None:
+                rec["資料最後更新日期"] = str(upd).replace("\xa0", " ").strip()
+
+            # ── 交易筆數 / 交易金額：確保為整數
+            for num_col in ("交易筆數", "交易金額"):
+                v = rec.get(num_col)
+                if v is not None:
+                    try:
+                        rec[num_col] = int(v)
+                    except (ValueError, TypeError):
+                        pass
+
+            records.append(rec)
+
+    wb.close()
+    return records
 
 
 def _upsert(conn, tbl, records, source):
