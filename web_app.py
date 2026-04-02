@@ -1555,6 +1555,9 @@ def api_industry_by_inst():
 @app.route("/api/monthly_pass/periods")
 def mp_periods():
     conn = get_conn()
+    if not _table_exists(conn, "月票交易統計"):
+        conn.close()
+        return jsonify([])
     rows = conn.execute(
         'SELECT DISTINCT yr, mn, ym FROM "月票交易統計" ORDER BY yr, mn'
     ).fetchall()
@@ -1565,6 +1568,9 @@ def mp_periods():
 def mp_schemes():
     """回傳所有方案（代碼＋名稱去重）"""
     conn = get_conn()
+    if not _table_exists(conn, "月票交易統計"):
+        conn.close()
+        return jsonify([])
     rows = conn.execute(
         'SELECT DISTINCT 方案代碼, 方案名稱 FROM "月票交易統計" ORDER BY 方案代碼'
     ).fetchall()
@@ -1575,6 +1581,9 @@ def mp_schemes():
 def mp_by_system():
     """各月份 × 體系別（SVC/QR）加總"""
     conn = get_conn()
+    if not _table_exists(conn, "月票交易統計"):
+        conn.close()
+        return jsonify([])
     rows = conn.execute('''
         SELECT ym, yr, mn, 體系別,
                SUM(交易筆數) AS 交易筆數,
@@ -1594,6 +1603,9 @@ def mp_by_scheme():
     """各月份 × 方案加總（可篩月份）"""
     ym = request.args.get("ym", "")
     conn = get_conn()
+    if not _table_exists(conn, "月票交易統計"):
+        conn.close()
+        return jsonify([])
     where = 'WHERE ym=?' if ym else ''
     params = [ym] if ym else []
     rows = conn.execute(f'''
@@ -1617,6 +1629,9 @@ def mp_trend():
     scheme = request.args.get("scheme", "")
     sys_   = request.args.get("sys", "")   # SVC / QR / 空=全部
     conn = get_conn()
+    if not _table_exists(conn, "月票交易統計"):
+        conn.close()
+        return jsonify([])
     conds, params = [], []
     if scheme:
         conds.append('方案代碼=?'); params.append(scheme)
@@ -1640,6 +1655,9 @@ def mp_trend():
 def mp_latest_summary():
     """最新月份：總計 + 體系別分計 + 各方案排行"""
     conn = get_conn()
+    if not _table_exists(conn, "月票交易統計"):
+        conn.close()
+        return jsonify({})
     latest = conn.execute(
         'SELECT yr, mn, ym FROM "月票交易統計" ORDER BY yr DESC, mn DESC LIMIT 1'
     ).fetchone()
@@ -1675,6 +1693,9 @@ def mp_latest_summary():
 def mp_scheme_monthly():
     """各月份 × 方案 彙整（SVC+QR 加總）"""
     conn = get_conn()
+    if not _table_exists(conn, "月票交易統計"):
+        conn.close()
+        return jsonify([])
     rows = conn.execute('''
         SELECT yr, mn, ym, 方案代碼, 方案名稱,
                SUM(交易筆數) AS 交易筆數, SUM(交易金額) AS 交易金額
